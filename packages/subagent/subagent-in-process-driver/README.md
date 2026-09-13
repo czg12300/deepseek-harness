@@ -20,6 +20,8 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+`attachStructuredRuntime(ctx, schema)` also attaches the same scoped capture protocol to an existing owned Agent scope. The caller owns Agent lifetime and must dispose the scope after the turn; the returned capture reads only the committed structured tool result.
+
 -----
 
 <a id="use-this-package"></a>

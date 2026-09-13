@@ -4,6 +4,8 @@
 - button "New session":
   - img
   - text: New Session
+- navigation "Global panels":
+  - button "Comics"
 - text: Workspaces
 - button "Search sessions":
   - img
@@ -29,8 +31,7 @@
   - img
   - text: Standard mode
   - img
-- textbox "Describe what you want to build, / commands, @ files or sessions":
-  - paragraph
+- textbox "Describe what you want to build, / commands, @ files or sessions"
 - button "Add files or run commands":
   - img
 - 'button "Access mode, current: Workspace Write"': Workspace Write

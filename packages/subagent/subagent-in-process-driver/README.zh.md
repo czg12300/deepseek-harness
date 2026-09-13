@@ -20,6 +20,8 @@ kind: "package-library"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+`attachStructuredRuntime(ctx, schema)` 也可将同一作用域捕获协议附加到已有受控 Agent 作用域。调用方负责 Agent 生命周期，并在回合后释放作用域；返回的捕获器只读取已提交的结构化工具结果。
+
 -----
 
 <a id="use-this-package"></a>

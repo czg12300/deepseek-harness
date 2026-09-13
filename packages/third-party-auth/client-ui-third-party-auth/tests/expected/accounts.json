@@ -1,0 +1,26 @@
+{
+  "heading": "Third-party authorization",
+  "accounts": [
+    "ChatGPTAuthorize with your ChatGPT accountConnectedAccount connectedDisconnectDefault modelFor new sessions using this accountChoose a modelModel AModel BStart a session with this model",
+    "ClaudeConnect through Claude CodeNot connectedOfficial Claude Code manages sign-in and credentials.Connect Claude Code"
+  ],
+  "controls": [
+    "Disconnect",
+    "Start a session with this model",
+    "Connect Claude Code"
+  ],
+  "models": [
+    {
+      "value": "",
+      "label": "Choose a model"
+    },
+    {
+      "value": "model-a",
+      "label": "Model A"
+    },
+    {
+      "value": "model-b",
+      "label": "Model B"
+    }
+  ]
+}

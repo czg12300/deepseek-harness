@@ -2264,6 +2264,235 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'studioAgents',
+    summary: 'Scoped professional execution; no project mutation or approval tool is installed on an Agent.',
+    description: 'Scoped professional execution; no project mutation or approval tool is installed on an Agent.',
+    methods: [
+      {
+        signature: 'registerContextTool(tool: StudioContextTool): () => Promise<void>',
+        description: 'Register a host-reviewed, read-only integration; names cannot collide with structured proposal output.',
+        parameters: [{ name: 'tool', description: 'trusted implementation and actual source classification.' }],
+        returns: 'its effect-owned disposer; removing a selected tool makes subsequent tasks fail explicitly.',
+      },
+      {
+        signature: 'async catalog(): Promise<StudioAssistantCatalog>',
+        description: 'Read available professional roles and actual skill/tool registrations.',
+        parameters: [],
+        returns: 'dependency choices without invoking a model.',
+      },
+      {
+        signature: 'async resolve(role: StudioRoleRevision): Promise<StudioResolvedRole>',
+        description: 'Resolve model and dependency content once, before its workspace begins execution.',
+        parameters: [{ name: 'role', description: 'immutable, validated role configuration.' }],
+        returns: 'the effective model and selected skill bodies/tool identities.',
+      },
+      {
+        signature: 'async execute(task: StudioTask): Promise<StudioAssistantResult>',
+        description: 'Drive exactly one explicit task, retaining Session history while task-local tools are disposed.',
+        parameters: [{ name: 'task', description: 'fully frozen, persisted task supplied by the project service.' }],
+        returns: 'only an authoritative, logged structured result.',
+      },
+      {
+        signature: 'async cancel(id: StudioTaskId): Promise<void>',
+        description: 'Cancel task work and await its actual settlement.',
+        parameters: [{ name: 'id', description: 'host-owned task identity.' }],
+        returns: 'after all task-local tools and pending model work have stopped.',
+      },
+    ],
+  },
+  {
+    key: 'studioProjects',
+    summary: 'Revisioned projects and permanent episode identities exposed as studioProjects Remote methods.',
+    description: 'Revisioned projects and permanent episode identities exposed as studioProjects Remote methods.',
+    methods: [
+      {
+        signature: '@Remote(\'list\') list(): ProjectSummary[]',
+        description: 'List current projects, including archived ones, sorted by update time then stable identity.',
+        parameters: [],
+        returns: 'Metadata without creative text bodies; corrupt stored documents throw.',
+      },
+      {
+        signature: '@Remote(\'get\') get(id: ProjectId): Project | null',
+        description: 'Read the latest immutable revision directly from SQLite.',
+        parameters: [{ name: 'id', description: 'Existing or unknown canonical project UUID.' }],
+        returns: 'The current document, or null when the project does not exist; corruption throws.',
+      },
+      {
+        signature: '@Remote(\'create\') create(input: ProjectInput): Project',
+        description: 'Persist a complete project without starting an agent or generation task.',
+        parameters: [{ name: 'input', description: 'Complete editable content with caller-created episode UUIDs.' }],
+        returns: 'The first durable revision; invalid content or foreign episode ownership throws.',
+      },
+      {
+        signature: '@Remote(\'save\') save(id: ProjectId, expectedRevision: number, input: ProjectInput): SaveResult',
+        description: 'Save all editable content as a new immutable revision.',
+        parameters: [{ name: 'id', description: 'Project to edit; unknown projects throw.' }, { name: 'expectedRevision', description: 'Revision used to prepare the caller\'s draft.' }, { name: 'input', description: 'Complete replacement content; metadata fields are rejected.' }],
+        returns: 'Saved revision or unchanged current project on conflict/archive; stale checks take precedence.',
+      },
+      {
+        signature: '@Remote(\'setArchived\') setArchived(id: ProjectId, expectedRevision: number, archived: boolean): SaveResult',
+        description: 'Archive or restore a project without altering its creative content.',
+        parameters: [{ name: 'id', description: 'Project to archive or restore; unknown projects throw.' }, { name: 'expectedRevision', description: 'Revision used for this decision.' }, { name: 'archived', description: 'True for read-only archive, false to restore editing.' }],
+        returns: 'A new revision on transition, current revision for an identical state, or conflict.',
+      },
+      {
+        signature: '@Remote(\'history\') history(id: ProjectId): Project[]',
+        description: 'Read every project revision, including removed episodes and archive transitions.',
+        parameters: [{ name: 'id', description: 'Project UUID.' }],
+        returns: 'Detached documents oldest first, or an empty array for an unknown project; corruption throws.',
+      },
+      {
+        signature: '@Remote(\'creationDrafts\') creationDrafts(): StudioCreationSummary[]',
+        description: 'List saved creation forms independently of formal projects.',
+        parameters: [],
+        returns: 'recoverable, unpublished creation drafts.',
+      },
+      {
+        signature: '@Remote(\'creationDraft\') creationDraft(id: StudioCreationId): StudioCreationDraft | null',
+        description: 'Reopen the latest saved creation form without invoking an assistant.',
+        parameters: [{ name: 'id', description: 'creation-form identity.' }],
+        returns: 'saved input or null when unknown.',
+      },
+      {
+        signature: '@Remote(\'saveCreationDraft\') saveCreationDraft(id: StudioCreationId, expectedRevision: number | null, input: ProjectInput): StudioCreationSaveResult',
+        description: 'Save a creation form without creating a Project or starting an Agent.',
+        parameters: [{ name: 'id', description: 'independent creation-form identity.' }, { name: 'expectedRevision', description: 'last observed form revision, or null for a new form.' }, { name: 'input', description: 'complete form fields; the title may still be empty.' }],
+        returns: 'saved state or a conflict retaining current data.',
+      },
+      {
+        signature: '@Remote(\'createFromDraft\') createFromDraft(id: StudioCreationId, expectedRevision: number, input: ProjectInput): Project',
+        description: 'Create a formal project from a saved form exactly once.',
+        parameters: [{ name: 'id', description: 'creation-form identity.' }, { name: 'expectedRevision', description: 'form version confirmed by the user.' }, { name: 'input', description: 'valid complete project content.' }],
+        returns: 'the created project; stale or different repeated input is rejected.',
+      },
+      {
+        signature: '@Remote(\'assistantCatalog\') async assistantCatalog(): Promise<StudioAssistantCatalog>',
+        description: 'Read actual dependency availability for the professional configuration panel.',
+        parameters: [],
+        returns: 'registered capabilities; missing providers are reported explicitly.',
+      },
+      {
+        signature: 'proposalFields(target: StudioTarget): StudioField[]',
+        description: 'Read the field policy used by both proposal schemas and application validation.',
+        parameters: [{ name: 'target', description: 'frozen authoring target.' }],
+        returns: 'target-owned field identities.',
+      },
+      {
+        signature: '@Remote(\'roles\') roles(): StudioRoleRevision[]',
+        description: 'List the published professional-role configurations.',
+        parameters: [],
+        returns: 'one current version for each role.',
+      },
+      {
+        signature: '@Remote(\'publishRole\') async publishRole(role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig): Promise<StudioRoleRevision>',
+        description: 'Publish a human-edited role configuration; existing workspaces retain their versions.',
+        parameters: [{ name: 'role', description: 'role identity.' }, { name: 'expectedRevision', description: 'version edited by the user.' }, { name: 'config', description: 'complete professional configuration.' }],
+        returns: 'the new immutable role revision.',
+      },
+      {
+        signature: '@Remote(\'openWorkspace\') openWorkspace(target: StudioTarget): StudioWorkspaceView',
+        description: 'Open recorded dialogue without starting an Agent or making a model request.',
+        parameters: [{ name: 'target', description: 'stable project, episode, or creation-form target.' }],
+        returns: 'its current role-version binding and recorded work.',
+      },
+      {
+        signature: '@Remote(\'workspace\') workspace(id: StudioWorkspaceId): StudioWorkspaceView',
+        description: 'Read a previously bound workspace, including in-flight tasks from an older role version.',
+        parameters: [{ name: 'id', description: 'workspace identity.' }],
+        returns: 'recorded tasks, suggestions, and locks.',
+      },
+      {
+        signature: 'workspaceForSession(sessionId: SessionId): StudioWorkspace | null',
+        description: 'Resolve host policy when the Harness creates or resumes a bound Session.',
+        parameters: [{ name: 'sessionId', description: 'actual Session identity, never a model-reported role.' }],
+        returns: 'its immutable professional binding, or null for an ordinary Session.',
+      },
+      {
+        signature: 'markWorkspaceSession(id: StudioWorkspaceId): void',
+        description: 'Record successful Session creation before sending its first professional input.',
+        parameters: [{ name: 'id', description: 'workspace whose reserved Session now exists.' }],
+      },
+      {
+        signature: 'registerAssistantBackend(backend: StudioAssistantBackend): () => void',
+        description: 'Install one trusted professional execution provider for this project service.',
+        parameters: [{ name: 'backend', description: 'real Agent/Session execution provider.' }],
+        returns: 'a disposer that removes the provider; its owner drains live Agents.',
+      },
+      {
+        signature: '@Remote(\'startAssistant\') async startAssistant(request: StudioTaskRequest): Promise<StudioTaskView>',
+        description: 'Capture a human request, then execute independently of browser navigation.',
+        parameters: [{ name: 'request', description: 'immutable target binding, local input, expected revision, and prompt.' }],
+        returns: 'the recorded task immediately; waitTask observes its settlement.',
+      },
+      {
+        signature: 'assertAssistantTask(task: StudioTask): void',
+        description: 'Assert that a professional execution belongs to this service\'s live dispatch and durable snapshot.',
+        parameters: [{ name: 'task', description: 'snapshot supplied to the registered execution provider.' }],
+        throws: ['when an unowned or altered task attempts to drive a Session.'],
+      },
+      {
+        signature: '@Remote(\'waitTask\') async waitTask(id: StudioTaskId): Promise<StudioTaskView>',
+        description: 'Await a task\'s recorded settlement without polling a model or repeating submission.',
+        parameters: [{ name: 'id', description: 'task identity returned by startAssistant.' }],
+        returns: 'terminal state, or current state when another process owns execution.',
+      },
+      {
+        signature: '@Remote(\'cancelAssistant\') async cancelAssistant(id: StudioTaskId): Promise<StudioTaskView>',
+        description: 'Stop owned professional work; external-process work is never falsely reported as stopped.',
+        parameters: [{ name: 'id', description: 'task identity.' }],
+        returns: 'recorded final state after the Agent is quiescent.',
+      },
+      {
+        signature: '@Remote(\'applyProposal\') applyProposal(request: StudioApplyRequest): StudioApplyResult',
+        description: 'Apply human-selected suggestions to a draft; this never approves content.',
+        parameters: [{ name: 'request', description: 'selected fields and current local/saved input.' }],
+        returns: 'new draft input or an explicit conflict/lock/archive rejection.',
+      },
+      {
+        signature: '@Remote(\'ignoreProposal\') ignoreProposal(id: StudioProposalId, fields: StudioField[]): StudioProposal',
+        description: 'Ignore pending proposal fields without editing the project.',
+        parameters: [{ name: 'id', description: 'proposal identity.' }, { name: 'fields', description: 'pending fields selected by the user.' }],
+        returns: 'updated proposal disposition.',
+      },
+      {
+        signature: '@Remote(\'setFieldLocks\') setFieldLocks(target: StudioTarget, fields: StudioField[]): StudioField[]',
+        description: 'Protect selected fields from assistant proposal application.',
+        parameters: [{ name: 'target', description: 'authoring target.' }, { name: 'fields', description: 'complete set of protected fields.' }],
+        returns: 'the saved lock set.',
+      },
+      {
+        signature: '@Remote(\'submitReview\') submitReview(target: Exclude<StudioTarget, { kind: \'creation\' }>, expectedRevision: number): StudioReview',
+        description: 'Submit a saved target for human content review.',
+        parameters: [{ name: 'target', description: 'existing project content.' }, { name: 'expectedRevision', description: 'exact saved project version.' }],
+        returns: 'the queued review record.',
+      },
+      {
+        signature: '@Remote(\'reviews\') reviews(id: ProjectId): StudioReview[]',
+        description: 'Read pending and completed reviews for a project.',
+        parameters: [{ name: 'id', description: 'project identity.' }],
+        returns: 'reviews tied to their original saved versions.',
+      },
+      {
+        signature: '@Remote(\'reviewQueue\') reviewQueue(): StudioReview[]',
+        description: 'Read the global human review queue across projects.',
+        parameters: [],
+        returns: 'review records carrying explicit project and version references.',
+      },
+      {
+        signature: 'approvedContext(id: StudioReviewId): { review: StudioReview; fields: { field: StudioField; value: StudioFieldValue }[] }',
+        description: 'Read an approved immutable input for a controlled, workspace-scoped context tool.',
+        parameters: [{ name: 'id', description: 'review identity already authorized by the frozen task.' }],
+        returns: 'exact approved fields and their review reference.',
+      },
+      {
+        signature: '@Remote(\'decideReview\') decideReview(id: StudioReviewId, decision: \'approved\' | \'returned\', comment: string): StudioReview',
+        description: 'Record a human approval or return; professional tools do not expose this operation.',
+        parameters: [{ name: 'id', description: 'pending review identity.' }, { name: 'decision', description: 'approve or return the saved content.' }, { name: 'comment', description: 'review explanation.' }],
+        returns: 'the immutable decision.',
+      },
+    ],
+  },
+  {
     key: 'subagentModelSelection',
     summary: 'Singleton settings owner read when delegation tools are composed for a Session.',
     description: 'Singleton settings owner read when delegation tools are composed for a Session.',
@@ -2515,6 +2744,177 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'List fresh snapshots for exactly one owner.',
         parameters: [{ name: 'owner', description: 'exact owner whose sessions are visible.' }],
         returns: 'owner-visible snapshots in publication order.',
+      },
+    ],
+  },
+  {
+    key: 'thirdPartyAuth',
+    summary: 'Own account registration, preferences, and cancellable connection attempts.',
+    description: 'Own account registration, preferences, and cancellable connection attempts.',
+    methods: [
+      {
+        signature: 'readonly preferences: SettingsScope<AccountSettings>',
+        description: 'Non-secret connection intent and per-account default selection.',
+        parameters: [],
+      },
+      {
+        signature: 'async *changes(signal: AbortSignal): AsyncIterable<number>',
+        description: 'Follow coalesced account invalidations without disclosing prompts or credentials.',
+        parameters: [{ name: 'signal', description: 'subscribing page lifetime.' }],
+        returns: 'an initial readiness marker and subsequent refresh markers.',
+      },
+      {
+        signature: 'register(provider: AccountProvider): () => Promise<void>',
+        description: 'Contribute one account provider until its plugin unloads.',
+        parameters: [{ name: 'provider', description: 'owner of native login and routing.' }],
+        returns: 'asynchronous disposer that waits for its login to stop.',
+      },
+      {
+        signature: 'async list(signal: AbortSignal): Promise<AccountView[]>',
+        description: 'Describe authentication and catalog failures independently.',
+        parameters: [{ name: 'signal', description: 'cancellation of this read.' }],
+        returns: 'secret-free provider cards.',
+      },
+      {
+        signature: 'async *connect(id: ProviderId, signal: AbortSignal): AsyncIterable<ConnectEvent>',
+        description: 'Stream one private authorization conversation and enable only its committed result.',
+        parameters: [{ name: 'id', description: 'installed account provider.' }, { name: 'signal', description: 'originating stream lifetime.' }],
+        returns: 'notices, prompts, and terminal outcome.',
+      },
+      {
+        signature: 'answer(attemptId: AttemptId, promptId: PromptId, answer: string): void',
+        description: 'Reply through the capability delivered on the initiating stream.',
+        parameters: [{ name: 'attemptId', description: 'unguessable live attempt capability.' }, { name: 'promptId', description: 'prompt carried by that attempt.' }, { name: 'answer', description: 'user\'s answer; never persisted.' }],
+      },
+      {
+        signature: 'async disconnect(id: ProviderId): Promise<void>',
+        description: 'Disable this integration without signing out other native clients.',
+        parameters: [{ name: 'id', description: 'account to disconnect.' }],
+      },
+      {
+        signature: 'async selectModel(id: ProviderId, model: string, signal: AbortSignal): Promise<void>',
+        description: 'Save a discovered model for future sessions of this provider.',
+        parameters: [{ name: 'id', description: 'connected provider.' }, { name: 'model', description: 'exact catalog model id.' }, { name: 'signal', description: 'cancellation of model discovery.' }],
+      },
+    ],
+  },
+  {
+    key: 'thirdPartyAuthController',
+    summary: 'Transport consumer for the optional account service.',
+    description: 'Transport consumer for the optional account service.',
+    methods: [
+      {
+        signature: '@Remote list(signal: AbortSignal): Promise<AccountView[]>',
+        description: 'Read account cards without exposing credentials.',
+        parameters: [{ name: 'signal', description: 'caller cancellation.' }],
+        returns: 'provider status and discovered models.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) changes(signal: AbortSignal): AsyncIterable<number>',
+        description: 'Watch account invalidations independently of private authorization streams.',
+        parameters: [{ name: 'signal', description: 'page subscription lifetime.' }],
+        returns: 'coalesced markers requesting a fresh account read.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) connect(id: ProviderId, signal: AbortSignal): AsyncIterable<ConnectEvent>',
+        description: 'Start a private login stream; closing it cancels its attempt.',
+        parameters: [{ name: 'id', description: 'account provider.' }, { name: 'signal', description: 'stream lifetime.' }],
+        returns: 'scoped authorization notices, prompts, and settlement.',
+      },
+      {
+        signature: '@Remote answer(attemptId: AttemptId, promptId: PromptId, answer: string): void',
+        description: 'Submit an answer using the capability from the originating stream.',
+        parameters: [{ name: 'attemptId', description: 'opaque attempt capability.' }, { name: 'promptId', description: 'pending prompt identity.' }, { name: 'answer', description: 'user input, never returned or persisted.' }],
+      },
+      {
+        signature: '@Remote async disconnect(id: ProviderId): Promise<void>',
+        description: 'Disconnect only this integration\'s account use.',
+        parameters: [{ name: 'id', description: 'connected account provider.' }],
+      },
+      {
+        signature: '@Remote selectModel(id: ProviderId, model: string, signal: AbortSignal): Promise<void>',
+        description: 'Save one provider\'s default for future sessions.',
+        parameters: [{ name: 'id', description: 'connected provider.' }, { name: 'model', description: 'discovered model id.' }, { name: 'signal', description: 'caller cancellation.' }],
+      },
+      {
+        signature: '@Remote claudeList(): ClaudeSessionView[]',
+        description: 'List native conversations in this integration.',
+        parameters: [],
+        returns: 'persisted conversation metadata.',
+      },
+      {
+        signature: '@Remote claudeCreate(cwd: string, model: string, signal: AbortSignal): Promise<ClaudeSessionView>',
+        description: 'Allocate a native conversation in a user-selected workspace.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace directory.' }, { name: 'model', description: 'discovered native model.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'native conversation metadata.',
+      },
+      {
+        signature: '@Remote claudeHistory(id: ClaudeSessionId): ClaudeMessage[]',
+        description: 'Read displayed text from a native transcript.',
+        parameters: [{ name: 'id', description: 'conversation owned by the native workspace.' }],
+        returns: 'native user and assistant text.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) claudeTurn(id: ClaudeSessionId, text: string, model: string, signal: AbortSignal): AsyncIterable<ClaudeTurnEvent>',
+        description: 'Run a native turn without entering the default Harness Agent factory.',
+        parameters: [{ name: 'id', description: 'native conversation.' }, { name: 'text', description: 'next user message.' }, { name: 'model', description: 'model fixed for this turn.' }, { name: 'signal', description: 'originating stream cancellation.' }],
+        returns: 'text, tool activity, and private approval events.',
+      },
+      {
+        signature: '@Remote claudeAnswer(attempt: AttemptId, prompt: PromptId, answer: string): void',
+        description: 'Answer one native turn\'s approval prompt.',
+        parameters: [{ name: 'attempt', description: 'private stream capability.' }, { name: 'prompt', description: 'pending prompt identity.' }, { name: 'answer', description: 'user\'s response.' }],
+      },
+      {
+        signature: '@Remote claudeCancel(attempt: AttemptId): Promise<void>',
+        description: 'Stop an owned native turn and acknowledge after managed-process cleanup.',
+        parameters: [{ name: 'attempt', description: 'private turn capability.' }],
+      },
+    ],
+  },
+  {
+    key: 'thirdPartyClaude',
+    summary: 'Own native turns, transcript storage, and private approval interactions.',
+    description: 'Own native turns, transcript storage, and private approval interactions.',
+    methods: [
+      {
+        signature: 'list(): ClaudeSessionView[]',
+        description: 'List this integration\'s native conversations.',
+        parameters: [],
+        returns: 'plugin-owned native conversations, without scanning other Claude sessions.',
+      },
+      {
+        signature: 'async create(cwd: string, model: string, signal: AbortSignal): Promise<ClaudeSessionView>',
+        description: 'Create a conversation in the workspace the user selected.',
+        parameters: [{ name: 'cwd', description: 'absolute existing workspace directory.' }, { name: 'model', description: 'native catalog model.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'persisted native session metadata.',
+      },
+      {
+        signature: 'history(id: ClaudeSessionId): ClaudeMessage[]',
+        description: 'Project readable text from the native mirror, preserving raw records for official resume.',
+        parameters: [{ name: 'id', description: 'plugin-owned native conversation.' }],
+        returns: 'user and assistant text from the native main transcript.',
+      },
+      {
+        signature: 'async *turn(id: ClaudeSessionId, text: string, model: string, signal: AbortSignal): AsyncIterable<ClaudeTurnEvent>',
+        description: 'Run a turn using official native resume and stream its output and approval questions.',
+        parameters: [{ name: 'id', description: 'plugin-owned native conversation.' }, { name: 'text', description: 'the user\'s next message.' }, { name: 'model', description: 'model fixed for this turn.' }, { name: 'signal', description: 'initiating stream lifetime.' }],
+        returns: 'output and private approval events until the native process exits.',
+      },
+      {
+        signature: 'answer(attempt: AttemptId, prompt: PromptId, answer: string): void',
+        description: 'Answer a pending native approval or question from its owning stream.',
+        parameters: [{ name: 'attempt', description: 'private turn capability.' }, { name: 'prompt', description: 'pending question identity.' }, { name: 'answer', description: 'user response.' }],
+      },
+      {
+        signature: 'async cancel(attempt: AttemptId): Promise<void>',
+        description: 'Stop the turn owned by one private stream and wait for native process cleanup.',
+        parameters: [{ name: 'attempt', description: 'capability delivered to the turn\'s initiating client.' }],
+      },
+      {
+        signature: 'async stop(): Promise<void>',
+        description: 'Stop all plugin-owned native turns before disconnecting this integration.',
+        parameters: [],
       },
     ],
   },
@@ -3567,6 +3967,34 @@ export const EVENT_API: readonly EventApiEntry[] = [
 /** Shapes of every exported type the Service and Event signatures reference (transitively), sorted by name. */
 export const TYPE_API: readonly TypeApiEntry[] = [
   {
+    name: 'AccountModel',
+    declaration: 'export interface AccountModel {\n    id: string;\n    name: string;\n}',
+  },
+  {
+    name: 'AccountPreference',
+    declaration: 'export interface AccountPreference {\n    enabled: boolean;\n    model?: string;\n    managedRoute?: boolean;\n}',
+  },
+  {
+    name: 'AccountPrompt',
+    declaration: 'export type AccountPrompt = Omit<Extract<AuthorizationPrompt, {\n    kind: \'text\';\n}>, \'signal\'> | Omit<Extract<AuthorizationPrompt, {\n    kind: \'secret\';\n}>, \'signal\'> | Omit<Extract<AuthorizationPrompt, {\n    kind: \'select\';\n}>, \'signal\'>;',
+  },
+  {
+    name: 'AccountProvider',
+    declaration: 'export interface AccountProvider {\n    id: ProviderId;\n    status(signal: AbortSignal): Promise<AccountStatus>;\n    models(signal: AbortSignal): Promise<AccountModel[]>;\n    connect(interaction: ConnectInteraction): Promise<boolean>;\n    activate(signal: AbortSignal): Promise<void>;\n    deactivate(): Promise<void>;\n}',
+  },
+  {
+    name: 'AccountSettings',
+    declaration: 'export interface AccountSettings {\n    accounts: Partial<Record<ProviderId, AccountPreference>>;\n}',
+  },
+  {
+    name: 'AccountStatus',
+    declaration: 'export interface AccountStatus {\n    connected: boolean;\n    email?: string;\n    unavailable?: \'runtime-missing\' | \'route-conflict\' | \'status-failed\';\n}',
+  },
+  {
+    name: 'AccountView',
+    declaration: 'export interface AccountView extends AccountStatus {\n    id: ProviderId;\n    enabled: boolean;\n    connecting: boolean;\n    model?: string;\n    models: AccountModel[];\n    catalogFailed: boolean;\n}',
+  },
+  {
     name: 'AdapterRegistrationHandle',
     declaration: 'export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}',
   },
@@ -3739,6 +4167,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AttachmentId = Branded<\'AttachmentId\'>;',
   },
   {
+    name: 'AttemptId',
+    declaration: 'export type AttemptId = Branded<\'ThirdPartyAuthAttempt\'>;',
+  },
+  {
     name: 'AuthorizationEntry',
     declaration: 'export interface AuthorizationEntry {\n    key: CredentialKey;\n    label: string;\n    methods: readonly AuthorizationMethod[];\n    inFlight: boolean;\n}',
   },
@@ -3809,6 +4241,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'BrandedNumber',
     declaration: 'export type BrandedNumber<B extends string> = number & {\n    readonly [BRAND]: B;\n};',
+  },
+  {
+    name: 'ClaudeMessage',
+    declaration: 'export interface ClaudeMessage {\n    role: \'user\' | \'assistant\';\n    text: string;\n}',
+  },
+  {
+    name: 'ClaudeSessionId',
+    declaration: 'export type ClaudeSessionId = Branded<\'ThirdPartyClaudeSession\'>;',
+  },
+  {
+    name: 'ClaudeSessionView',
+    declaration: 'export interface ClaudeSessionView {\n    id: ClaudeSessionId;\n    title: string;\n    model: string;\n    cwd: string;\n    updatedAt: number;\n}',
+  },
+  {
+    name: 'ClaudeTurnEvent',
+    declaration: 'export type ClaudeTurnEvent = ConnectEvent | {\n    kind: \'text\';\n    text: string;\n} | {\n    kind: \'tool\';\n    name: string;\n} | {\n    kind: \'completed\';\n    outcome: \'success\' | \'cancelled\' | \'failed\';\n};',
   },
   {
     name: 'ClientArtifactBaseline',
@@ -3913,6 +4361,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ConfinedSandboxMode',
     declaration: 'export type ConfinedSandboxMode = Exclude<SandboxMode, \'danger-full-access\'>;',
+  },
+  {
+    name: 'ConnectEvent',
+    declaration: 'export type ConnectEvent = {\n    kind: \'started\';\n    attemptId: AttemptId;\n} | {\n    kind: \'notice\';\n    notice: AuthorizationNotice;\n} | {\n    kind: \'prompt\';\n    id: PromptId;\n    prompt: AccountPrompt;\n} | {\n    kind: \'withdrawn\';\n    id: PromptId;\n} | {\n    kind: \'settled\';\n    status: \'connected\' | \'cancelled\' | \'failed\';\n};',
+  },
+  {
+    name: 'ConnectInteraction',
+    declaration: 'export interface ConnectInteraction {\n    signal: AbortSignal;\n    notify(notice: AuthorizationNotice): void;\n    prompt(prompt: AuthorizationPrompt): Promise<string>;\n}',
   },
   {
     name: 'ContentBlockMap',
@@ -4197,6 +4653,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EncodedImageAttachment',
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
+  },
+  {
+    name: 'Episode',
+    declaration: 'export interface Episode {\n    id: EpisodeId;\n    title: string;\n    script: string;\n}',
+  },
+  {
+    name: 'EpisodeId',
+    declaration: 'export type EpisodeId = Branded<\'StudioEpisodeId\'>;',
   },
   {
     name: 'EpochHeader',
@@ -4803,6 +5267,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n};',
   },
   {
+    name: 'Project',
+    declaration: 'export interface Project extends ProjectInput {\n    id: ProjectId;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n    archived: boolean;\n}',
+  },
+  {
+    name: 'ProjectId',
+    declaration: 'export type ProjectId = Branded<\'StudioProjectId\'>;',
+  },
+  {
+    name: 'ProjectInput',
+    declaration: 'export interface ProjectInput {\n    name: string;\n    concept: string;\n    sourceText: string;\n    aspectRatio: \'16:9\' | \'9:16\' | \'1:1\';\n    targetEpisodes: number | null;\n    episodeDuration: number | null;\n    outline: string;\n    episodes: Episode[];\n}',
+  },
+  {
     name: 'ProjectionChangeListener',
     declaration: 'export type ProjectionChangeListener = (session: Session, key: Extract<keyof SessionProjectionMap, string>, value: unknown, seq: SessionSeq) => void;',
   },
@@ -4823,6 +5299,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ProjectionSnapshot {\n    asOfSeq: SessionSeqCursor;\n    values: Partial<SessionProjectionMap>;\n}',
   },
   {
+    name: 'ProjectSummary',
+    declaration: 'export interface ProjectSummary {\n    id: ProjectId;\n    name: string;\n    concept: string;\n    aspectRatio: \'16:9\' | \'9:16\' | \'1:1\';\n    targetEpisodes: number | null;\n    episodeDuration: number | null;\n    episodeCount: number;\n    archived: boolean;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n}',
+  },
+  {
     name: 'PromptAssembly',
     declaration: 'export interface PromptAssembly {\n    sections: AssembledSection[];\n    contexts: AssembledContext[];\n    tools: ToolSchema[];\n    variables: Record<string, string | undefined>;\n}',
   },
@@ -4839,12 +5319,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PromptFileBinding extends Disposable {\n    commit(): void;\n}',
   },
   {
+    name: 'PromptId',
+    declaration: 'export type PromptId = Branded<\'ThirdPartyAuthPrompt\'>;',
+  },
+  {
     name: 'PromptSection',
     declaration: 'export interface PromptSection {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly complete?: boolean;\n}',
   },
   {
     name: 'PromptSectionOrderName',
     declaration: 'export type PromptSectionOrderName = keyof typeof SECTION_ORDERS;',
+  },
+  {
+    name: 'ProviderId',
+    declaration: 'export type ProviderId = \'chatgpt\' | \'claude\';',
   },
   {
     name: 'ProviderRequestId',
@@ -4989,6 +5477,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SaveImageAttachment',
     declaration: 'export interface SaveImageAttachment {\n    data: Uint8Array;\n    mediaType: ImageMediaType;\n    name?: string;\n}',
+  },
+  {
+    name: 'SaveResult',
+    declaration: 'export type SaveResult = {\n    status: \'saved\';\n    project: Project;\n} | {\n    status: \'conflict\';\n    project: Project;\n} | {\n    status: \'archived\';\n    project: Project;\n};',
   },
   {
     name: 'SaveTextSpill',
@@ -5709,6 +6201,122 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'StreamChunk',
     declaration: 'export type StreamChunk = {\n    type: \'block-start\';\n    index: number;\n    blockType: ContentBlockType;\n} | {\n    type: \'text-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'reasoning-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'tool-call-delta\';\n    index: number;\n    id: ToolCallId;\n    name?: string;\n    argumentsDelta: string;\n} | {\n    type: \'block-end\';\n    index: number;\n    block: ContentBlock;\n} | {\n    type: \'usage\';\n    usage: TokenUsage;\n} | {\n    type: \'finish\';\n    reason: FinishReason;\n    replayState?: ReplayEnvelope;\n};',
+  },
+  {
+    name: 'StudioApplyRequest',
+    declaration: 'export interface StudioApplyRequest {\n    proposalId: StudioProposalId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    fields: StudioField[];\n}',
+  },
+  {
+    name: 'StudioApplyResult',
+    declaration: 'export type StudioApplyResult = {\n    status: \'applied\';\n    input: ProjectInput;\n    project: Project | null;\n    creation: StudioCreationDraft | null;\n    proposal: StudioProposal;\n} | {\n    status: \'conflict\' | \'locked\' | \'archived\';\n    fields: StudioField[];\n    project: Project | null;\n    creation: StudioCreationDraft | null;\n};',
+  },
+  {
+    name: 'StudioAssistantBackend',
+    declaration: 'export interface StudioAssistantBackend {\n    catalog(this: void): Promise<StudioAssistantCatalog>;\n    resolve(this: void, role: StudioRoleRevision): Promise<StudioResolvedRole>;\n    execute(this: void, task: StudioTask): Promise<StudioAssistantResult>;\n    cancel(this: void, taskId: StudioTaskId): Promise<void>;\n}',
+  },
+  {
+    name: 'StudioAssistantCatalog',
+    declaration: 'export interface StudioAssistantCatalog {\n    backendAvailable: boolean;\n    enabledRoles: StudioRoleId[];\n    defaultModel: {\n        provider: string;\n        model: string;\n    } | null;\n    skills: Array<{\n        name: string;\n        description: string;\n    }>;\n    tools: Array<{\n        name: string;\n        description: string;\n        source: \'builtin\' | \'mcp\';\n    }>;\n}',
+  },
+  {
+    name: 'StudioAssistantResult',
+    declaration: 'export interface StudioAssistantResult {\n    reply: string;\n    changes: Array<{\n        field: StudioField;\n        value: StudioFieldValue;\n    }>;\n}',
+  },
+  {
+    name: 'StudioContextTool',
+    declaration: 'export interface StudioContextTool {\n    name: string;\n    description: string;\n    source: \'builtin\' | \'mcp\';\n    parameters: ObjectJsonSchema;\n    execute(task: Readonly<StudioTask>, args: unknown, signal: AbortSignal): Promise<JsonValue>;\n}',
+  },
+  {
+    name: 'StudioCreationDraft',
+    declaration: 'export interface StudioCreationDraft {\n    id: StudioCreationId;\n    revision: number;\n    input: ProjectInput;\n    updatedAt: string;\n}',
+  },
+  {
+    name: 'StudioCreationId',
+    declaration: 'export type StudioCreationId = Branded<\'StudioCreationId\'>;',
+  },
+  {
+    name: 'StudioCreationSaveResult',
+    declaration: 'export type StudioCreationSaveResult = {\n    status: \'saved\' | \'conflict\';\n    draft: StudioCreationDraft;\n};',
+  },
+  {
+    name: 'StudioCreationSummary',
+    declaration: 'export interface StudioCreationSummary {\n    id: StudioCreationId;\n    revision: number;\n    name: string;\n    updatedAt: string;\n}',
+  },
+  {
+    name: 'StudioField',
+    declaration: 'export type StudioField = \'name\' | \'concept\' | \'sourceText\' | \'aspectRatio\' | \'targetEpisodes\' | \'episodeDuration\' | \'outline\' | \'episodes\' | \'episodeTitle\' | \'episodeScript\';',
+  },
+  {
+    name: 'StudioFieldValue',
+    declaration: 'export type StudioFieldValue = string | number | null | ProjectInput[\'episodes\'];',
+  },
+  {
+    name: 'StudioProposal',
+    declaration: 'export interface StudioProposal {\n    id: StudioProposalId;\n    taskId: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    target: StudioTarget;\n    expectedRevision: number | null;\n    changes: Array<{\n        field: StudioField;\n        before: StudioFieldValue;\n        after: StudioFieldValue;\n    }>;\n    applied: StudioField[];\n    ignored: StudioField[];\n    createdAt: string;\n}',
+  },
+  {
+    name: 'StudioProposalId',
+    declaration: 'export type StudioProposalId = Branded<\'StudioProposalId\'>;',
+  },
+  {
+    name: 'StudioRequestId',
+    declaration: 'export type StudioRequestId = Branded<\'StudioRequestId\'>;',
+  },
+  {
+    name: 'StudioResolvedRole',
+    declaration: 'export interface StudioResolvedRole {\n    provider: string;\n    model: string;\n    skills: Array<{\n        name: string;\n        content: string;\n    }>;\n    tools: string[];\n}',
+  },
+  {
+    name: 'StudioReview',
+    declaration: 'export interface StudioReview {\n    id: StudioReviewId;\n    target: Exclude<StudioTarget, {\n        kind: \'creation\';\n    }>;\n    projectRevision: number;\n    status: \'pending\' | \'approved\' | \'returned\';\n    comment: string;\n    createdAt: string;\n    decidedAt: string | null;\n}',
+  },
+  {
+    name: 'StudioReviewId',
+    declaration: 'export type StudioReviewId = Branded<\'StudioReviewId\'>;',
+  },
+  {
+    name: 'StudioRoleConfig',
+    declaration: 'export interface StudioRoleConfig {\n    persona: string;\n    provider: string | null;\n    model: string | null;\n    maxTokens: number;\n    maxSteps: number;\n    timeoutMs: number;\n    skills: string[];\n    tools: string[];\n}',
+  },
+  {
+    name: 'StudioRoleId',
+    declaration: 'export type StudioRoleId = \'planner\' | \'writer\' | \'character-designer\' | \'art-director\' | \'storyboard-director\' | \'image-artist\' | \'video-director\' | \'editor\' | \'continuity-reviewer\';',
+  },
+  {
+    name: 'StudioRoleRevision',
+    declaration: 'export interface StudioRoleRevision {\n    role: StudioRoleId;\n    revision: number;\n    config: StudioRoleConfig;\n    createdAt: string;\n}',
+  },
+  {
+    name: 'StudioTarget',
+    declaration: 'export type StudioTarget = {\n    kind: \'creation\';\n    draftId: StudioCreationId;\n} | {\n    kind: \'outline\';\n    projectId: ProjectId;\n} | {\n    kind: \'episodes\';\n    projectId: ProjectId;\n} | {\n    kind: \'episode\';\n    projectId: ProjectId;\n    episodeId: EpisodeId;\n};',
+  },
+  {
+    name: 'StudioTask',
+    declaration: 'export interface StudioTask {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    role: StudioRoleRevision;\n    resolved: StudioResolvedRole;\n    sessionId: SessionId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n    reviews: StudioReview[];\n    status: \'running\' | \'completed\' | \'failed\' | \'cancelled\' | \'interrupted\';\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
+  },
+  {
+    name: 'StudioTaskId',
+    declaration: 'export type StudioTaskId = Branded<\'StudioTaskId\'>;',
+  },
+  {
+    name: 'StudioTaskRequest',
+    declaration: 'export interface StudioTaskRequest {\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n}',
+  },
+  {
+    name: 'StudioTaskView',
+    declaration: 'export interface StudioTaskView {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    sessionId: SessionId;\n    role: StudioRoleId;\n    roleRevision: number;\n    provider: string;\n    model: string;\n    expectedRevision: number | null;\n    prompt: string;\n    status: StudioTask[\'status\'];\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
+  },
+  {
+    name: 'StudioWorkspace',
+    declaration: 'export interface StudioWorkspace {\n    id: StudioWorkspaceId;\n    target: StudioTarget;\n    role: StudioRoleRevision;\n    sessionId: SessionId;\n    resolved: StudioResolvedRole | null;\n    initialized: boolean;\n    createdAt: string;\n}',
+  },
+  {
+    name: 'StudioWorkspaceId',
+    declaration: 'export type StudioWorkspaceId = Branded<\'StudioWorkspaceId\'>;',
+  },
+  {
+    name: 'StudioWorkspaceView',
+    declaration: 'export interface StudioWorkspaceView {\n    workspace: StudioWorkspace;\n    tasks: StudioTaskView[];\n    proposals: StudioProposal[];\n    lockedFields: StudioField[];\n    allowedFields: StudioField[];\n    creation: StudioCreationDraft | null;\n    versions: Array<{\n        id: StudioWorkspaceId;\n        roleRevision: number;\n        running: boolean;\n    }>;\n}',
   },
   {
     name: 'SubagentCapabilities',

@@ -1,0 +1,26 @@
+.page { max-width: 720px; display: grid; gap: 14px; color: var(--dsw-alias-label-primary); }
+.page h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; }
+.intro, .hint { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 22px; }
+.card { padding: 18px; border: 0.5px solid var(--dsw-alias-border-l4); border-radius: 16px; }
+.header, .account { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.identity { display: grid; gap: 3px; }
+.identity strong { font-weight: 500; }
+.identity span, .status { font-size: 12px; color: var(--dsw-alias-label-secondary); }
+.connected { font-size: 12px; color: var(--dsw-alias-state-success-primary); }
+.details { display: grid; gap: 14px; margin-top: 18px; }
+.account { padding-top: 14px; border-top: 0.5px solid var(--dsw-alias-border-l4); overflow-wrap: anywhere; }
+.field { display: grid; gap: 7px; font-size: 13px; }
+.field > span { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
+.field small { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.page select, .page input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 10px; border: 0.5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; }
+.page button { border: 0.5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); padding: 8px 13px; border-radius: 10px; font: inherit; cursor: pointer; justify-self: start; }
+.page button:disabled { opacity: 0.5; cursor: default; }
+.page .textButton { border: none; padding: 0; font-size: 12px; color: var(--dsw-alias-label-secondary); background: transparent; }
+.page .primary { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-layer-2); }
+.message { min-height: 22px; font-size: 12px; margin: 0; }
+.dialog { width: 380px; max-width: calc(100vw - 48px); box-sizing: border-box; padding: 24px; border-radius: 20px; border: 0.5px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
+.dialog::backdrop { background: var(--dsw-alias-bg-mask-1); }
+.dialog h3 { margin: 0 0 12px; font-size: 16px; font-weight: 500; }
+.dialog p { font-size: 13px; line-height: 22px; overflow-wrap: anywhere; }
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+@media (max-width: 480px) { .card { padding: 14px; } .header { align-items: flex-start; } .account { flex-wrap: wrap; } }

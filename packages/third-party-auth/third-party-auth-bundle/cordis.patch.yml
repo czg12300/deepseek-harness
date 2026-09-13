@@ -1,0 +1,7 @@
+- insert:
+    - id: third-party-authorization
+      name: '@deepseek-ai/dsh-authorization'
+    - id: third-party-auth
+      name: '@deepseek-ai/dsh-third-party-auth'
+    - id: ui-third-party-auth
+      name: '@deepseek-ai/dsh-client-ui-third-party-auth'

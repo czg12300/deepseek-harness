@@ -12,6 +12,9 @@
   ],
   "references": [
     {
+      "path": "../../multica/studio-core"
+    },
+    {
       "path": "../../../vendor/cordis"
     },
     {

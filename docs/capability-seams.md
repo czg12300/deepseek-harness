@@ -7,6 +7,17 @@ A service can be a core spine service, a swappable capability seam, or a bundle/
 
 ```mermaid
 flowchart LR
+  pkg_studio_agents["studio-agents"]
+  svc_studioAgents["ctx.studioAgents<br/>Multica professional Sessions"]
+  pkg_studio_core["studio-core"]
+  svc_studioProjects["ctx.studioProjects<br/>Multica project revisions"]
+  pkg_api_remotes["api-remotes"]
+  pkg_client_ui_multica["client-ui-multica"]
+  pkg_third_party_auth["third-party-auth"]
+  svc_thirdPartyAuth["ctx.thirdPartyAuth<br/>Optional account connection state"]
+  pkg_client_ui_third_party_auth["client-ui-third-party-auth"]
+  svc_thirdPartyAuthController["ctx.thirdPartyAuthController<br/>Account Remote controller"]
+  svc_thirdPartyClaude["ctx.thirdPartyClaude<br/>Independent native Claude conversations"]
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
@@ -315,6 +326,8 @@ flowchart LR
   pkg_storage_domain --> svc_storageDomain
   pkg_storage_json --> svc_storage
   pkg_storage_sqlite --> svc_storage
+  pkg_studio_agents --> svc_studioAgents
+  pkg_studio_core --> svc_studioProjects
   pkg_subagent --> svc_subagents
   pkg_subagent_acp --> svc_subagents
   pkg_subagent_claude_code --> svc_subagents
@@ -328,6 +341,9 @@ flowchart LR
   pkg_system_prompt --> svc_systemPrompt
   pkg_terminal --> svc_terminals
   pkg_terminal_bash --> svc_terminals
+  pkg_third_party_auth --> svc_thirdPartyAuth
+  pkg_third_party_auth --> svc_thirdPartyAuthController
+  pkg_third_party_auth --> svc_thirdPartyClaude
   pkg_token_meter --> svc_tokenMeter
   pkg_tool_subagent --> svc_subagentModelSelection
   pkg_tools --> svc_tools
@@ -428,6 +444,10 @@ flowchart LR
   svc_spillStore --> pkg_spill_policy
   svc_storage --> pkg_storage_domain
   svc_storageDomain --> pkg_workspace
+  svc_studioAgents --> pkg_studio_core
+  svc_studioProjects --> pkg_api_remotes
+  svc_studioProjects --> pkg_client_ui_multica
+  svc_studioProjects --> pkg_studio_agents
   svc_subagentModelSelection --> pkg_tool_subagent
   svc_subagents --> pkg_tool_ralph
   svc_subagents --> pkg_tool_subagent
@@ -445,6 +465,9 @@ flowchart LR
   svc_systemPrompt --> pkg_tool_web
   svc_systemPrompt --> pkg_tools
   svc_terminals --> pkg_tool_terminal
+  svc_thirdPartyAuth --> pkg_client_ui_third_party_auth
+  svc_thirdPartyAuthController --> pkg_client_ui_third_party_auth
+  svc_thirdPartyClaude --> pkg_client_ui_third_party_auth
   svc_tokenMeter --> pkg_compaction_basic
   svc_toolResultPruner --> pkg_compaction_basic
   svc_tools --> pkg_agent_loop
@@ -474,6 +497,11 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.studioAgents` | `core` | [`studio-agents`](../packages/multica/studio-agents) | - | [`studio-core`](../packages/multica/studio-core) | - | Executes frozen planner and writer tasks in dedicated Sessions with scoped read-only tools and structured proposals. |
+| `ctx.studioProjects` | `core` | [`studio-core`](../packages/multica/studio-core) | - | [`api-remotes`](../packages/api/remotes), [`client-ui-multica`](../packages/client/ui-multica), [`studio-agents`](../packages/multica/studio-agents) | - | Owns durable projects, immutable episode draft revisions, optimistic save conflicts, and project archival in SQLite. |
+| `ctx.thirdPartyAuth` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | Owns account preferences and private authorization attempts while consuming existing credential and provider services. |
+| `ctx.thirdPartyAuthController` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | Exposes local account operations and initiator-owned streams without adding vendor logic to existing controllers. |
+| `ctx.thirdPartyClaude` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | Owns native queries, permission interaction, and an official-transcript mirror outside the default Agent factory. |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | Owns streaming intake, durable storage, and staged receipt lifetime; the Session controller binds receipts to accepted submissions. |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | Adapters register provider implementations; the loop and compaction call the provider-neutral stream service. |

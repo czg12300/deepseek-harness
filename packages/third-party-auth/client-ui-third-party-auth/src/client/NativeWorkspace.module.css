@@ -1,0 +1,24 @@
+.window { width: 1080px; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px); padding: 0; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 24px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); pointer-events: auto; }
+.window::backdrop { background: var(--dsw-alias-bg-mask-1); }
+.heading { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 0.5px solid var(--dsw-alias-border-l4); }
+.heading h2 { margin: 0; font-size: 16px; font-weight: 500; }
+.layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+.history { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-right: 0.5px solid var(--dsw-alias-border-l4); }
+.history button { text-align: left; overflow-wrap: anywhere; }
+.content { padding: 20px; min-width: 0; display: grid; gap: 16px; }
+.options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.options label { display: grid; gap: 6px; font-size: 12px; }
+.window input, .window select, .window textarea { width: 100%; box-sizing: border-box; font: inherit; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 10px; padding: 9px 12px; }
+.window button { padding: 8px 12px; font: inherit; cursor: pointer; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 10px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
+.window button:disabled { opacity: 0.5; cursor: default; }
+.window button[aria-pressed='true'] { background: var(--dsw-specific-sidebar-nav-item-active); }
+.messages { min-height: 180px; max-height: 50vh; overflow: auto; }
+.message { margin-bottom: 18px; }
+.message strong { font-weight: 500; font-size: 13px; }
+.message pre, .permission pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; }
+.empty { color: var(--dsw-alias-label-secondary); }
+.actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.permission { border: 0.5px solid var(--dsw-alias-border-l3); padding: 12px; border-radius: 12px; }
+.permission form { display: flex; gap: 8px; }
+.composer textarea { resize: vertical; }
+@media (max-width: 650px) { .layout { grid-template-columns: 1fr; } .history { flex-direction: row; overflow: auto; border: 0; } .history button { flex: none; max-width: 160px; } .options { grid-template-columns: 1fr; } }

@@ -27,6 +27,8 @@ Run `dsh --profile web` to open an interactive browser GUI with chat, model and 
 
 Start the GUI, open your browser, and start talking to the agent. The flags fine-tune the invocation.
 
+The left sidebar's [Comics workspace](../../client/ui-multica/README.md) manages Multica projects and manual drafts. Project creation and editing do not start model calls.
+
 ### Starting the Web GUI
 
 ```sh

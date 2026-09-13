@@ -2352,6 +2352,51 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 Source: [`packages/storage/storage-sqlite/src/index.ts:24`](../packages/storage/storage-sqlite/src/index.ts)
 
+<a id="deepseek-aidsh-studio-agents"></a>
+
+## `@deepseek-ai/dsh-studio-agents`
+
+Requires: `studioProjects` · `agents` · `agentPresets` · `agentDefaultModel` · `sessionPersistence` · `systemPrompt` · `tools` · `llm` · `skills`
+
+```ts config-catalog
+/** Deployment storage for local Session working directories. */
+export interface Config {
+  /** Harness home containing the professional Session directories. */
+  dshHome?: string
+}
+```
+
+Source: [`packages/multica/studio-agents/src/index.ts:32`](../packages/multica/studio-agents/src/index.ts)
+
+<a id="deepseek-aidsh-studio-core"></a>
+
+## `@deepseek-ai/dsh-studio-core`
+
+```ts config-catalog
+/** Deployment-owned database location and SQLite writer contention budget. */
+export interface Config {
+  /** Harness home; omitted follows DSH_HOME, then ~/.dsh. */
+  dshHome?: string
+  /** Absolute or home-relative path inside the Harness home; defaults to multica/studio.sqlite. */
+  databasePath?: string
+  /** SQLite lock wait in milliseconds; defaults to 5000. */
+  busyTimeoutMs?: number
+  /** Maximum decoded bytes for a custom cover; defaults to 1048576. */
+  maxCoverBytes?: number
+  /** Initial professional-role execution defaults; published role versions retain their own values. */
+  assistantDefaults?: {
+    /** Maximum output tokens for newly seeded roles. */
+    maxTokens: number
+    /** Maximum model steps per task for newly seeded roles. */
+    maxSteps: number
+    /** Wall-clock execution deadline in milliseconds for newly seeded roles. */
+    timeoutMs: number
+  }
+}
+```
+
+Source: [`packages/multica/studio-core/src/index.ts:56`](../packages/multica/studio-core/src/index.ts)
+
 <a id="deepseek-aidsh-subagent-acp"></a>
 
 ## `@deepseek-ai/dsh-subagent-acp`
@@ -2658,6 +2703,40 @@ export type ShellDialect = 'bash' | 'pwsh'
 ```
 
 Source: [`packages/terminal/terminal-bash/src/config.ts:10`](../packages/terminal/terminal-bash/src/config.ts)
+
+<a id="deepseek-aidsh-third-party-auth"></a>
+
+## `@deepseek-ai/dsh-third-party-auth`
+
+Requires: `authorization` · `credentials` · `settings` · `llm` · `subprocess`
+
+```ts config-catalog
+/** Runtime and authorization limits, owned by the optional installation layer. */
+export interface Config {
+  /** Maximum duration of one user-guided authorization attempt, in milliseconds. */
+  connectTimeoutMs: number
+  /** Maximum unread private authorization events before cancellation. */
+  maxQueuedEvents: number
+  /** Working directory for native account and model metadata probes. */
+  cwd: string
+  /** Managed-process termination grace, in milliseconds. */
+  graceMs: number
+  /** Deadline for native account and catalog probes, in milliseconds. */
+  statusTimeoutMs: number
+  /** Maximum collected native diagnostic bytes and accepted login-line length. */
+  outputBytes: number
+  /** Plugin-owned native transcript database; :memory: provides process-local storage. */
+  databasePath: string
+  /** Maximum duration of a native conversation turn, in milliseconds. */
+  turnTimeoutMs: number
+  /** Maximum unread native turn events before cancellation. */
+  maxTurnEvents: number
+  /** Official Claude configuration directory isolated from other native clients. */
+  nativeConfigDir: string
+}
+```
+
+Source: [`packages/third-party-auth/third-party-auth/src/index.ts:19`](../packages/third-party-auth/third-party-auth/src/index.ts)
 
 <a id="deepseek-aidsh-time-context"></a>
 
@@ -3468,6 +3547,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-layout` ([`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-message-feedback` ([`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-model-selection` ([`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts))
+- `@deepseek-ai/dsh-client-ui-multica` ([`packages/client/ui-multica/src/index.ts`](../packages/client/ui-multica/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-open-in-app` ([`packages/client/ui-open-in-app/src/index.ts`](../packages/client/ui-open-in-app/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-permission-presets` ([`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-plan` ([`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts))
@@ -3487,6 +3567,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-skill` ([`packages/client/ui-skill/src/index.ts`](../packages/client/ui-skill/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-subagent` ([`packages/client/ui-subagent/src/index.ts`](../packages/client/ui-subagent/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-theme` ([`packages/client/ui-theme/src/index.ts`](../packages/client/ui-theme/src/index.ts))
+- `@deepseek-ai/dsh-client-ui-third-party-auth` ([`packages/third-party-auth/client-ui-third-party-auth/src/index.ts`](../packages/third-party-auth/client-ui-third-party-auth/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-tool` ([`packages/client/ui-tool/src/index.ts`](../packages/client/ui-tool/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-trajectory` ([`packages/client/ui-trajectory/src/index.ts`](../packages/client/ui-trajectory/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-user-questions` ([`packages/client/ui-user-questions/src/index.ts`](../packages/client/ui-user-questions/src/index.ts))
@@ -3518,6 +3599,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-subagent` ([`packages/subagent/subagent/src/index.ts`](../packages/subagent/subagent/src/index.ts))
 - `@deepseek-ai/dsh-subprocess-local` ([`packages/subprocess/subprocess-local/src/index.ts`](../packages/subprocess/subprocess-local/src/index.ts))
 - `@deepseek-ai/dsh-terminal` ([`packages/terminal/terminal/src/index.ts`](../packages/terminal/terminal/src/index.ts))
+- `@deepseek-ai/dsh-third-party-auth-bundle` ([`packages/third-party-auth/third-party-auth-bundle/src/index.ts`](../packages/third-party-auth/third-party-auth-bundle/src/index.ts))
 - `@deepseek-ai/dsh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))
 - `@deepseek-ai/dsh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
 - `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))

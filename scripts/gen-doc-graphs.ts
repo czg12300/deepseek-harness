@@ -99,6 +99,37 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'studioAgents',
+    pkg: 'studio-agents',
+    title: 'Multica professional Sessions',
+    mode: 'core',
+    consumers: ['studio-core'],
+    note: 'Executes frozen planner and writer tasks in dedicated Sessions with scoped read-only tools and structured proposals.',
+  },
+  {
+    key: 'studioProjects',
+    pkg: 'studio-core',
+    title: 'Multica project revisions',
+    mode: 'core',
+    consumers: ['api-remotes', 'client-ui-multica', 'studio-agents'],
+    note: 'Owns durable projects, immutable episode draft revisions, optimistic save conflicts, and project archival in SQLite.',
+  },
+  {
+    key: 'thirdPartyAuth', pkg: 'third-party-auth', title: 'Optional account connection state', mode: 'core',
+    consumers: ['client-ui-third-party-auth'],
+    note: 'Owns account preferences and private authorization attempts while consuming existing credential and provider services.',
+  },
+  {
+    key: 'thirdPartyAuthController', pkg: 'third-party-auth', title: 'Account Remote controller', mode: 'core',
+    consumers: ['client-ui-third-party-auth'],
+    note: 'Exposes local account operations and initiator-owned streams without adding vendor logic to existing controllers.',
+  },
+  {
+    key: 'thirdPartyClaude', pkg: 'third-party-auth', title: 'Independent native Claude conversations', mode: 'core',
+    consumers: ['client-ui-third-party-auth'],
+    note: 'Owns native queries, permission interaction, and an official-transcript mirror outside the default Agent factory.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

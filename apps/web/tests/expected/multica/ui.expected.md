@@ -1,0 +1,160 @@
+## Simple creation
+
+- region "Comics workspace":
+  - main:
+    - button "Cancel"
+    - paragraph: All projects
+    - heading "Create a new story" [level=1]
+    - paragraph: Start with one idea. Fill in the details later.
+    - group "Choose a starting point":
+      - text: Choose a starting point
+      - radio "Start with an idea" [checked]
+      - text: Start with an idea
+      - radio "Import a script"
+      - text: Import a script
+    - group:
+      - text: One-line concept
+      - textbox "One-line concept":
+        - /placeholder: "For example: A girl who hears plants speak sets out to find a missing forest."
+      - text: 0 / 100 characters
+    - group: More settings (optional)
+    - button "Save creation draft"
+    - button "Create project" [disabled]
+    - group: Draft export and planning assistant
+
+## Saved project
+
+- region "Comics workspace":
+  - navigation "Series planning":
+    - button "Back to all projects"
+    - text: Select project
+    - combobox "Select project":
+      - option "All projects"
+      - option "Desert Couriers"
+      - option "Lighthouse Keepers" [selected]
+      - option "New project"
+    - paragraph: Series planning
+    - button "Story outline"
+    - button "Episodes"
+    - paragraph: Shared library
+    - button "Characters and looks" [disabled]
+    - button "Scenes" [disabled]
+    - button "Props" [disabled]
+    - paragraph: Production management
+    - button "Awaiting review"
+    - button "Generation tasks" [disabled]
+    - button "Agent configuration"
+    - button "Version history"
+    - button "Project settings"
+  - main:
+    - paragraph: Lighthouse Keepers
+    - heading "Story outline" [level=1]
+    - text: Version 2 Approved Story outline
+    - textbox "Story outline":
+      - /placeholder: Develop the main story, character arcs, and world rules here.
+      - text: Mira repairs the lighthouse before the winter fleet returns.
+    - status: Saved
+    - button "Submit for review" [disabled]
+    - button "Save draft" [disabled]
+    - paragraph: Drafts survive project and page navigation. Save or export before closing or refreshing this page.
+    - button "Export local draft"
+  - complementary "Planning assistant":
+    - heading "Planning assistant" [level=2]
+    - text: Ready for a request
+    - button "Agent configuration"
+    - paragraph: "Current target: Story outline · Version 2"
+    - text: Workspace version
+    - combobox "Workspace version":
+      - option "Role configuration v1" [selected]
+    - group: Capabilities and tools
+    - group: Protected fields
+    - paragraph: Send a request to receive an explanation or proposal. Navigation does not run a task.
+    - button "Refresh projects"
+    - textbox "Request for the professional assistant":
+      - /placeholder: Describe the change… (Enter for a new line, Shift + Enter to send)
+    - button "Send" [disabled]
+
+## Archived project
+
+- region "Comics workspace":
+  - navigation "Series planning":
+    - button "Back to all projects"
+    - text: Select project
+    - combobox "Select project":
+      - option "All projects"
+      - option "Lighthouse Keepers" [selected]
+      - option "Desert Couriers"
+      - option "New project"
+    - paragraph: Series planning
+    - button "Story outline"
+    - button "Episodes"
+    - paragraph: Shared library
+    - button "Characters and looks" [disabled]
+    - button "Scenes" [disabled]
+    - button "Props" [disabled]
+    - paragraph: Production management
+    - button "Awaiting review"
+    - button "Generation tasks" [disabled]
+    - button "Agent configuration"
+    - button "Version history"
+    - button "Project settings"
+  - main:
+    - paragraph: Lighthouse Keepers
+    - heading "Story outline" [level=1]
+    - text: Version 3
+    - status: This project is archived and read-only. Restore it in Project settings to edit.
+    - text: Story outline
+    - textbox "Story outline" [disabled]:
+      - /placeholder: Develop the main story, character arcs, and world rules here.
+      - text: Mira repairs the lighthouse before the winter fleet returns.
+    - status: Saved
+    - button "Submit for review" [disabled]
+    - button "Save draft" [disabled]
+    - paragraph: Drafts survive project and page navigation. Save or export before closing or refreshing this page.
+    - button "Export local draft"
+  - complementary "Planning assistant":
+    - heading "Planning assistant" [level=2]
+    - text: Ready for a request
+    - button "Agent configuration"
+    - paragraph: "Current target: Story outline · Version 3"
+    - text: Workspace version
+    - combobox "Workspace version":
+      - option "Role configuration v1" [selected]
+    - group: Capabilities and tools
+    - group: Protected fields
+    - paragraph: Send a request to receive an explanation or proposal. Navigation does not run a task.
+    - button "Refresh projects"
+    - textbox "Request for the professional assistant" [disabled]:
+      - /placeholder: Describe the change… (Enter for a new line, Shift + Enter to send)
+    - button "Send" [disabled]
+
+## Human-approved outline
+
+- region "Comics workspace":
+  - button "Back to workspace"
+  - heading "Content review" [level=1]
+  - paragraph: Approve only the selected version. Content approval does not authorize paid generation.
+  - button "Refresh projects"
+  - navigation "Content review":
+    - text: Review status
+    - combobox "Review status":
+      - option "Pending review" [selected]
+      - option "Approved"
+      - option "Returned"
+      - option "All statuses"
+  - main:
+    - heading "Lighthouse Keepers" [level=2]
+    - text: Approved
+    - heading "Submitted version · Version 2" [level=3]
+    - text: Mira repairs the lighthouse before the winter fleet returns.
+    - heading "Previously approved version" [level=3]
+    - paragraph: No previously approved version.
+    - text: Review comment
+    - textbox "Review comment" [disabled]: Ready for storyboard planning.
+    - paragraph: Approve only the selected version. Content approval does not authorize paid generation.
+    - button "Return for revision" [disabled]
+    - button "Approve this version" [disabled]
+  - complementary:
+    - heading "Continuity reviewer" [level=2]
+    - paragraph: Its production capability is not available yet
+    - paragraph: Approve only the selected version. Content approval does not authorize paid generation.

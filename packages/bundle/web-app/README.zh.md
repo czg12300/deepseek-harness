@@ -25,6 +25,8 @@ kind: "package-bundle"
 <a id="use-this-package"></a>
 ## 使用本包
 
+左侧栏的[漫剧工作台](../../client/ui-multica/README.zh.md)用于管理 Multica 项目和手工草稿。创建和编辑项目不会发起模型调用。
+
 启动 GUI、打开浏览器，然后开始与 agent（智能体）对话。flag 用于微调本次调用。
 
 ### 启动 Web GUI

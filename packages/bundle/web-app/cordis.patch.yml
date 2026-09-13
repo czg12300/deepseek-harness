@@ -75,6 +75,12 @@
     - id: workspace
       name: '@deepseek-ai/dsh-workspace'
 
+    - id: studio-projects
+      name: '@deepseek-ai/dsh-studio-core'
+
+    - id: studio-agents
+      name: '@deepseek-ai/dsh-studio-agents'
+
     - id: session-reference
       name: '@deepseek-ai/dsh-session-reference'
 
@@ -282,6 +288,9 @@
 
     - id: ui-workspace
       name: '@deepseek-ai/dsh-client-ui-workspace'
+
+    - id: ui-multica
+      name: '@deepseek-ai/dsh-client-ui-multica'
 
     # Input triggers: the '/' | '@' pipeline (ui-input-trigger), the command surface over
     # it (ui-commands), and the reference sources (ui-skill / ui-reference).

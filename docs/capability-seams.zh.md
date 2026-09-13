@@ -9,6 +9,17 @@
 
 ```mermaid
 flowchart LR
+  pkg_studio_agents["studio-agents"]
+  svc_studioAgents["ctx.studioAgents<br/>Multica professional Sessions"]
+  pkg_studio_core["studio-core"]
+  svc_studioProjects["ctx.studioProjects<br/>Multica project revisions"]
+  pkg_api_remotes["api-remotes"]
+  pkg_client_ui_multica["client-ui-multica"]
+  pkg_third_party_auth["third-party-auth"]
+  svc_thirdPartyAuth["ctx.thirdPartyAuth<br/>Optional account connection state"]
+  pkg_client_ui_third_party_auth["client-ui-third-party-auth"]
+  svc_thirdPartyAuthController["ctx.thirdPartyAuthController<br/>Account Remote controller"]
+  svc_thirdPartyClaude["ctx.thirdPartyClaude<br/>Independent native Claude conversations"]
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
@@ -317,6 +328,8 @@ flowchart LR
   pkg_storage_domain --> svc_storageDomain
   pkg_storage_json --> svc_storage
   pkg_storage_sqlite --> svc_storage
+  pkg_studio_agents --> svc_studioAgents
+  pkg_studio_core --> svc_studioProjects
   pkg_subagent --> svc_subagents
   pkg_subagent_acp --> svc_subagents
   pkg_subagent_claude_code --> svc_subagents
@@ -330,6 +343,9 @@ flowchart LR
   pkg_system_prompt --> svc_systemPrompt
   pkg_terminal --> svc_terminals
   pkg_terminal_bash --> svc_terminals
+  pkg_third_party_auth --> svc_thirdPartyAuth
+  pkg_third_party_auth --> svc_thirdPartyAuthController
+  pkg_third_party_auth --> svc_thirdPartyClaude
   pkg_token_meter --> svc_tokenMeter
   pkg_tool_subagent --> svc_subagentModelSelection
   pkg_tools --> svc_tools
@@ -430,6 +446,10 @@ flowchart LR
   svc_spillStore --> pkg_spill_policy
   svc_storage --> pkg_storage_domain
   svc_storageDomain --> pkg_workspace
+  svc_studioAgents --> pkg_studio_core
+  svc_studioProjects --> pkg_api_remotes
+  svc_studioProjects --> pkg_client_ui_multica
+  svc_studioProjects --> pkg_studio_agents
   svc_subagentModelSelection --> pkg_tool_subagent
   svc_subagents --> pkg_tool_ralph
   svc_subagents --> pkg_tool_subagent
@@ -447,6 +467,9 @@ flowchart LR
   svc_systemPrompt --> pkg_tool_web
   svc_systemPrompt --> pkg_tools
   svc_terminals --> pkg_tool_terminal
+  svc_thirdPartyAuth --> pkg_client_ui_third_party_auth
+  svc_thirdPartyAuthController --> pkg_client_ui_third_party_auth
+  svc_thirdPartyClaude --> pkg_client_ui_third_party_auth
   svc_tokenMeter --> pkg_compaction_basic
   svc_toolResultPruner --> pkg_compaction_basic
   svc_tools --> pkg_agent_loop
@@ -476,6 +499,11 @@ flowchart LR
 
 | ctx 键 | 角色 | 所属包 | 实现 | 直接消费方 | 配套插件 | 说明 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.studioAgents` | `core` | [`studio-agents`](../packages/multica/studio-agents) | - | [`studio-core`](../packages/multica/studio-core) | - | 在独立 Session 中执行冻结的策划与编剧任务，使用作用域只读工具和结构化提案。 |
+| `ctx.studioProjects` | `core` | [`studio-core`](../packages/multica/studio-core) | - | [`api-remotes`](../packages/api/remotes), [`client-ui-multica`](../packages/client/ui-multica), [`studio-agents`](../packages/multica/studio-agents) | - | 在 SQLite 中管理持久化项目、不可变的单集草稿版本、乐观保存冲突和项目归档。 |
+| `ctx.thirdPartyAuth` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | 使用已有凭证和 Provider 服务，负责账号偏好与私有授权尝试。 |
+| `ctx.thirdPartyAuthController` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | 提供本机账号操作和发起者拥有的流，不向已有控制器加入厂商逻辑。 |
+| `ctx.thirdPartyClaude` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | 在默认 Agent 工厂之外负责原生查询、权限交互及官方会话记录镜像。 |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | [`api-session-controller`](../packages/api/session-controller), [`tool-fs`](../packages/fs/tool-fs), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | 宿主会在会话事件之前提交已接受的图片；提供方适配器将已授权的持久引用解析为提供方原生内容。 |
 | `ctx.fileUploads` | `core` | [`client-file-upload`](../packages/client/file-upload) | - | [`api-session-controller`](../packages/api/session-controller) | - | 负责流式接收、持久存储和暂存回执生命周期；Session Controller 将回执绑定到已接受的提交。 |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | 适配器注册提供方实现；agent loop（智能体循环）与压缩功能调用提供方无关的流服务。 |

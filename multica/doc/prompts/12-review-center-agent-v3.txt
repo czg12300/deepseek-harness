@@ -1,0 +1,5 @@
+Edit this UI image with only three small TEXT corrections. Preserve all layout, art, controls and specialist chat.
+1. Above the left comparison image replace '当前定稿 v3（最新）' with '待审候选 v3'. This candidate is NOT yet approved. The right comparison stays '基准定稿 v2'.
+2. In the right read-only checker result, correct the earring change direction to '耳钉颜色：银色 → 黑色'. The v2 baseline has silver earrings and v3 candidate has black earrings.
+3. Rename the read-only result card title from '修改建议（检查结果·只读）' to '检查报告（只读）'.
+No additional changes, no automatic approval. Sharp Chinese typography, same resolution and aspect.
