@@ -99,6 +99,11 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'novelProjects', pkg: 'novel-core', title: 'Directory-backed novels', mode: 'core',
+    consumers: ['api-remotes', 'client-ui-novel', 'novel-agents', 'novel-session-storage'],
+    note: 'Owns per-document revisions, captured authoring tasks, human-applied proposals and novel Session locations.',
+  },
+  {
     key: 'studioAgents',
     pkg: 'studio-agents',
     title: 'Multica professional Sessions',

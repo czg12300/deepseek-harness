@@ -7,11 +7,16 @@ A service can be a core spine service, a swappable capability seam, or a bundle/
 
 ```mermaid
 flowchart LR
+  pkg_novel_core["novel-core"]
+  svc_novelProjects["ctx.novelProjects<br/>Directory-backed novels"]
+  pkg_api_remotes["api-remotes"]
+  pkg_client_ui_novel["client-ui-novel"]
+  pkg_novel_agents["novel-agents"]
+  pkg_novel_session_storage["novel-session-storage"]
   pkg_studio_agents["studio-agents"]
   svc_studioAgents["ctx.studioAgents<br/>Multica professional Sessions"]
   pkg_studio_core["studio-core"]
   svc_studioProjects["ctx.studioProjects<br/>Multica project revisions"]
-  pkg_api_remotes["api-remotes"]
   pkg_client_ui_multica["client-ui-multica"]
   pkg_third_party_auth["third-party-auth"]
   svc_thirdPartyAuth["ctx.thirdPartyAuth<br/>Optional account connection state"]
@@ -292,6 +297,7 @@ flowchart LR
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
   pkg_message_feedback --> svc_messageFeedback
+  pkg_novel_core --> svc_novelProjects
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_plugin_package_inventory_deepseek --> svc_deepseekLlmApiExtensions
@@ -402,6 +408,10 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_novelProjects --> pkg_api_remotes
+  svc_novelProjects --> pkg_client_ui_novel
+  svc_novelProjects --> pkg_novel_agents
+  svc_novelProjects --> pkg_novel_session_storage
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -497,6 +507,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.novelProjects` | `core` | [`novel-core`](../packages/novel/novel-core) | - | [`api-remotes`](../packages/api/remotes), [`client-ui-novel`](../packages/client/ui-novel), [`novel-agents`](../packages/novel/novel-agents), [`novel-session-storage`](../packages/novel/novel-session-storage) | - | Owns per-document revisions, captured authoring tasks, human-applied proposals and novel Session locations. |
 | `ctx.studioAgents` | `core` | [`studio-agents`](../packages/multica/studio-agents) | - | [`studio-core`](../packages/multica/studio-core) | - | Executes frozen planner and writer tasks in dedicated Sessions with scoped read-only tools and structured proposals. |
 | `ctx.studioProjects` | `core` | [`studio-core`](../packages/multica/studio-core) | - | [`api-remotes`](../packages/api/remotes), [`client-ui-multica`](../packages/client/ui-multica), [`studio-agents`](../packages/multica/studio-agents) | - | Owns durable projects, immutable episode draft revisions, optimistic save conflicts, and project archival in SQLite. |
 | `ctx.thirdPartyAuth` | `core` | [`third-party-auth`](../packages/third-party-auth/third-party-auth) | - | [`client-ui-third-party-auth`](../packages/third-party-auth/client-ui-third-party-auth) | - | Owns account preferences and private authorization attempts while consuming existing credential and provider services. |

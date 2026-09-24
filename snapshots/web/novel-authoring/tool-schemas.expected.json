@@ -1,0 +1,45 @@
+{
+  "initial": [
+    {
+      "name": "structured_output",
+      "description": "Report your final structured result. Call this exactly once, when your answer is complete; the arguments must match this tool's parameter schema exactly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string",
+            "description": "An explanation to the author, in their language."
+          },
+          "replacements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "spanId": {
+                  "type": "string",
+                  "enum": [
+                    "empty-document"
+                  ]
+                },
+                "replacement": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "spanId",
+                "replacement"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "reply",
+          "replacements"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "changes": []
+}

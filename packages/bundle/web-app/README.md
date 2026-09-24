@@ -29,6 +29,8 @@ Start the GUI, open your browser, and start talking to the agent. The flags fine
 
 The left sidebar's [Comics workspace](../../client/ui-multica/README.md) manages Multica projects and manual drafts. Project creation and editing do not start model calls.
 
+The sidebar [Novels workspace](../../client/ui-novel/README.md) manages directory-backed manuscripts, document editing and human-applied Agent suggestions.
+
 ### Starting the Web GUI
 
 ```sh

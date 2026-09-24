@@ -403,6 +403,20 @@ export interface Config {
 
 来源：[`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
+<a id="deepseek-aidsh-client-ui-novel"></a>
+
+## `@deepseek-ai/dsh-client-ui-novel`
+
+```ts config-catalog
+/** Editor save timing; authoring forms contain only project metadata and location. */
+export interface Config {
+  /** Idle milliseconds before saving; zero disables automatic saves. Defaults to 1000. */
+  autoSaveMs?: number
+}
+```
+
+来源： [`packages/client/ui-novel/src/index.ts:6`](../packages/client/ui-novel/src/index.ts)
+
 <a id="deepseek-aidsh-code-runtime-worker-thread"></a>
 
 ## `@deepseek-ai/dsh-code-runtime-worker-thread`
@@ -1596,6 +1610,66 @@ export interface Config {
 
 来源：[`packages/feedback/message-feedback/src/index.ts:40`](../packages/feedback/message-feedback/src/index.ts)
 
+<a id="deepseek-aidsh-novel-agents"></a>
+
+## `@deepseek-ai/dsh-novel-agents`
+
+需要： `novelProjects` · `agents` · `agentDefaultModel` · `agentPresets` · `sessionPersistence` · `systemPrompt` · `tools` · `llm`
+
+```ts config-catalog
+/** Execution budgets for each explicit authoring request. */
+export interface Config {
+  /** Maximum output tokens; defaults to 8192. */
+  maxTokens?: number
+  /** Maximum entered model steps; defaults to 8. */
+  maxSteps?: number
+  /** Task deadline in milliseconds; defaults to 180000. */
+  timeoutMs?: number
+}
+```
+
+来源： [`packages/novel/novel-agents/src/index.ts:28`](../packages/novel/novel-agents/src/index.ts)
+
+<a id="deepseek-aidsh-novel-core"></a>
+
+## `@deepseek-ai/dsh-novel-core`
+
+```ts config-catalog
+/** Deployment budgets; no author is required to enter these while creating a novel. */
+export interface Config {
+  /** Harness home for the directory index. */
+  dshHome?: string
+  /** SQLite writer lock wait; defaults to 5000 ms. */
+  busyTimeoutMs?: number
+  /** Maximum UTF-16 characters in one saved document; defaults to 100000. */
+  maxDocumentChars?: number
+  /** Maximum referenced text per task; defaults to 24000 characters. */
+  maxContextChars?: number
+  /** Maximum referenced documents per task; defaults to 8. */
+  maxReferences?: number
+}
+```
+
+来源： [`packages/novel/novel-core/src/index.ts:54`](../packages/novel/novel-core/src/index.ts)
+
+<a id="deepseek-aidsh-novel-session-storage"></a>
+
+## `@deepseek-ai/dsh-novel-session-storage`
+
+需要： `novelProjects`
+
+```ts config-catalog
+/** Ordinary Session storage keeps the same configured location and encoding. */
+export interface Config {
+  /** Existing default JSONL root for non-novel Sessions. */
+  root: string
+  /** Physical JSONL encoding, including novel Session files. */
+  compression?: 'none' | 'zstd'
+}
+```
+
+来源： [`packages/novel/novel-session-storage/src/index.ts:20`](../packages/novel/novel-session-storage/src/index.ts)
+
 <a id="deepseek-aidsh-permission-presets"></a>
 
 ## `@deepseek-ai/dsh-permission-presets`
@@ -2383,6 +2457,8 @@ export interface Config {
   databasePath?: string
   /** SQLite lock wait in milliseconds; defaults to 5000. */
   busyTimeoutMs?: number
+  /** Maximum decoded bytes for a custom cover; defaults to 1048576. */
+  maxCoverBytes?: number
   /** Initial professional-role execution defaults; published role versions retain their own values. */
   assistantDefaults?: {
     /** Maximum output tokens for newly seeded roles. */

@@ -121,7 +121,11 @@
     "@deepseek-ai/schemastery": "workspace:^",
     "commander": "^15.0.0",
     "open": "^11.0.0",
-    "@deepseek-ai/dsh-studio-agents": "workspace:^"
+    "@deepseek-ai/dsh-studio-agents": "workspace:^",
+    "@deepseek-ai/dsh-novel-core": "workspace:^",
+    "@deepseek-ai/dsh-novel-agents": "workspace:^",
+    "@deepseek-ai/dsh-novel-session-storage": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-novel": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

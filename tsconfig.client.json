@@ -108,6 +108,7 @@
     { "path": "./packages/client/ui-open-in-app" },
     { "path": "./packages/client/ui-theme" },
     { "path": "./packages/client/ui-multica" },
+    { "path": "./packages/client/ui-novel" },
     { "path": "./packages/client/ui-settings" },
     { "path": "./packages/client/ui-settings-general" },
     { "path": "./packages/client/ui-settings-models" },

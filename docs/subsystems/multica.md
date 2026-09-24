@@ -78,6 +78,19 @@ Revisioned projects and permanent episode identities exposed as studioProjects R
  */
 @Remote('list') list(): ProjectSummary[]
 
+/** Read the deployment upload limit before selecting a cover.
+ * @returns maximum decoded image bytes accepted by setCover.
+ */
+@Remote('coverUploadLimit') coverUploadLimit(): number
+
+/** Replace or remove a custom project cover independently of text revisions.
+ * @param id - existing, non-archived project UUID.
+ * @param expectedRevision - cover revision observed in list(); zero before any upload.
+ * @param image - PNG, JPEG or WebP base64 data URL within coverUploadLimit(), or null to remove it.
+ * @returns committed cover metadata; invalid images, stale revisions and archived projects throw without writing.
+ */
+@Remote('setCover') setCover(id: ProjectId, expectedRevision: number, image: string | null): ProjectCover
+
 /**
  * Read the latest immutable revision directly from SQLite.
  * @param id - Existing or unknown canonical project UUID.

@@ -1,0 +1,6 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: You are a novel-writing assistant. Propose edits to the supplied document; the author applies them.
+    complete: true
+    includeRuntimeContext: false

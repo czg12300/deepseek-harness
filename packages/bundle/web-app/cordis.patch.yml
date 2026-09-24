@@ -13,6 +13,11 @@
 
 # ── surface-specific values the base deliberately omits ─────────────────────
 
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-novel-session-storage'
+  config:
+    root: !!js dshHomePath('sessions')
+
 - id: system-prompt
   config:
     personaSuffix: Your working directory is {{cwd}}.
@@ -74,6 +79,12 @@
 
     - id: workspace
       name: '@deepseek-ai/dsh-workspace'
+
+    - id: novel-projects
+      name: '@deepseek-ai/dsh-novel-core'
+
+    - id: novel-agents
+      name: '@deepseek-ai/dsh-novel-agents'
 
     - id: studio-projects
       name: '@deepseek-ai/dsh-studio-core'
@@ -288,6 +299,11 @@
 
     - id: ui-workspace
       name: '@deepseek-ai/dsh-client-ui-workspace'
+
+    - id: ui-novel
+      name: '@deepseek-ai/dsh-client-ui-novel'
+      config:
+        autoSaveMs: 1000
 
     - id: ui-multica
       name: '@deepseek-ai/dsh-client-ui-multica'

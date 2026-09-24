@@ -42,6 +42,7 @@
     "apps/web/tests/workspace-new-session-folding.e2e.ts",
     "apps/web/tests/workspace-management.e2e.ts",
     "apps/web/tests/multica.expected.e2e.ts",
+    "apps/web/tests/novel-authoring.snapshot.ts",
     "apps/web/tests/replay-round-trip.e2e.ts",
     "apps/web/tests/hmr-live.e2e.ts",
     "apps/web/tests/preview-boot.e2e.ts",
@@ -361,6 +362,9 @@
     { "path": "./packages/lsp/tool-lsp" },
     { "path": "./apps/cli" },
     { "path": "./packages/multica/studio-core" },
+    { "path": "./packages/novel/novel-core" },
+    { "path": "./packages/novel/novel-agents" },
+    { "path": "./packages/novel/novel-session-storage" },
     { "path": "./packages/multica/studio-agents" },
     { "path": "./apps/desktop-host" },
     { "path": "./apps/desktop" }

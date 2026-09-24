@@ -1,0 +1,7 @@
+- id: agent-default-model
+  config:
+    provider: mock
+    model: creative
+- id: ui-novel
+  config:
+    autoSaveMs: 1000

@@ -1,0 +1,8 @@
+version: 1
+scenario: novel-authoring
+profile: web
+composition: web-novel
+recording: authored
+header:
+  class: web-novel
+  pin: true

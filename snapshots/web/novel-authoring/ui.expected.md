@@ -1,0 +1,30 @@
+- region "Novels":
+  - button "Novels"
+  - text: The letter
+  - button "Edit project details"
+  - navigation "Conversation":
+    - heading "The letter" [level=2]
+    - button "New document"
+    - heading "Manuscript" [level=3]
+    - button "The quay"
+    - heading "Outline" [level=3]
+    - heading "Characters" [level=3]
+    - heading "World" [level=3]
+  - region "Document text":
+    - text: Manuscript
+    - button "Move up" [disabled]
+    - button "Move down" [disabled]
+    - button "History"
+    - button "Save" [disabled]
+    - textbox "Document title": The quay
+    - paragraph: Saved · v2
+    - textbox "Document text": The lamp went out before he could read the letter.
+    - text: 41 characters
+  - complementary "AI Agent":
+    - heading "AI Agent" [level=2]
+    - text: "Conversation Current document: The quay"
+    - paragraph: Describe how you want to change the current document. Review suggestions in the editor before applying them.
+    - text: Write the opening. The lamp reveals a new clue.
+    - textbox "Tell the Agent how to change this document…"
+    - text: Edit current document
+    - button "Send" [disabled]

@@ -1342,6 +1342,166 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'novelProjects',
+    summary: 'Authoritative project data and task dispatch, independent of browser navigation.',
+    description: 'Authoritative project data and task dispatch, independent of browser navigation.',
+    methods: [
+      {
+        signature: '@Remote(\'list\') list(): NovelProject[]',
+        description: 'List visible registered novels without loading manuscript bodies.',
+        parameters: [],
+        returns: 'metadata for registered novels without reading manuscript bodies.',
+      },
+      {
+        signature: '@Remote(\'create\') create(input: NovelCreate): NovelProject',
+        description: 'Create a new novel directory, or recover the same creation request.',
+        parameters: [{ name: 'input', description: 'three creation fields and a retry ID.' }],
+        returns: 'the newly created directory-backed project.',
+      },
+      {
+        signature: '@Remote(\'importProject\') importProject(directory: string): NovelProject',
+        description: 'Register an existing complete novel without moving its files.',
+        parameters: [{ name: 'directory', description: 'existing project directory on the Host.' }],
+        returns: 'validated project metadata.',
+      },
+      {
+        signature: '@Remote(\'get\') get(id: NovelId): NovelProject',
+        description: 'Read metadata from the registered novel directory.',
+        parameters: [{ name: 'id', description: 'registered novel.' }],
+        returns: 'current project metadata.',
+      },
+      {
+        signature: '@Remote(\'updateInfo\') updateInfo(id: NovelId, revision: number, info: NovelInfo): NovelProject',
+        description: 'Update metadata only when the caller still owns the observed revision.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'revision', description: 'observed metadata version.' }, { name: 'info', description: 'edited title and synopsis.' }],
+        returns: 'saved project.',
+      },
+      {
+        signature: '@Remote(\'removeRegistration\') removeRegistration(id: NovelId): void',
+        description: 'Hide a list entry without deleting its directory or Session routes.',
+        parameters: [{ name: 'id', description: 'project to hide; its directory and history are retained.' }],
+      },
+      {
+        signature: '@Remote(\'documents\') documents(id: NovelId): Omit<NovelDocument, \'content\'>[]',
+        description: 'List ordered document metadata without their text bodies.',
+        parameters: [{ name: 'id', description: 'project.' }],
+        returns: 'ordered document metadata, without text bodies.',
+      },
+      {
+        signature: '@Remote(\'createDocument\') createDocument( id: NovelId, kind: NovelDocumentKind, title: string, requestId: NovelRequestId, ): NovelDocument',
+        description: 'Create an empty document with an immutable first revision.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'kind', description: 'authoring type.' }, { name: 'title', description: 'initial title.' }, { name: 'requestId', description: 'stable retry ID.' }],
+        returns: 'empty document.',
+      },
+      {
+        signature: '@Remote(\'readDocument\') readDocument(id: NovelId, documentId: NovelDocumentId): NovelDocument',
+        description: 'Read a document only through its owning novel.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documentId', description: 'owned document.' }],
+        returns: 'its current saved text.',
+      },
+      {
+        signature: '@Remote(\'saveDocument\') saveDocument( id: NovelId, documentId: NovelDocumentId, revision: number, title: string, content: string, requestId: NovelRequestId, ): NovelSaveResult',
+        description: 'Save one document using optimistic revision checks and a retry receipt.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documentId', description: 'owned document.' }, { name: 'revision', description: 'expected base.' }, { name: 'title', description: 'edited title.' }, { name: 'content', description: 'complete edited text.' }, { name: 'requestId', description: 'retry ID.' }],
+        returns: 'new version or conflict.',
+      },
+      {
+        signature: '@Remote(\'reorder\') reorder(id: NovelId, documents: NovelDocumentId[]): Omit<NovelDocument, \'content\'>[]',
+        description: 'Replace the complete ordering without rewriting manuscript revisions.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documents', description: 'every document exactly once.' }],
+        returns: 'saved ordering.',
+      },
+      {
+        signature: '@Remote(\'history\') history(id: NovelId, documentId: NovelDocumentId): NovelRevision[]',
+        description: 'Read immutable saved versions for one document.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documentId', description: 'document.' }],
+        returns: 'immutable versions, newest first.',
+      },
+      {
+        signature: '@Remote(\'restore\') restore( id: NovelId, documentId: NovelDocumentId, expected: number, revision: number, requestId: NovelRequestId, ): NovelSaveResult',
+        description: 'Restore historical text by appending a new version.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documentId', description: 'document.' }, { name: 'expected', description: 'current revision.' }, { name: 'revision', description: 'historical revision.' }, { name: 'requestId', description: 'retry ID.' }],
+        returns: 'restored content as a new revision or conflict.',
+      },
+      {
+        signature: '@Remote(\'conversation\') conversation(id: NovelId, documentId: NovelDocumentId): NovelConversation',
+        description: 'Read conversation history and reserve its Session identity without running a model.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'documentId', description: 'document.' }],
+        returns: 'its saved conversation without starting a model request.',
+      },
+      {
+        signature: '@Remote(\'assistantAvailable\') assistantAvailable(): boolean',
+        description: 'Report whether this Host can dispatch novel assistant tasks.',
+        parameters: [],
+        returns: 'whether a real assistant execution backend is composed.',
+      },
+      {
+        signature: '@Remote(\'send\') send(request: NovelSend): NovelTask',
+        description: 'Persist a captured task before dispatching its controlled Agent.',
+        parameters: [{ name: 'request', description: 'target and saved version captured by the user gesture.' }],
+        returns: 'a durable task immediately; completion is observed through waitTask.',
+      },
+      {
+        signature: '@Remote(\'waitTask\') async waitTask(id: NovelId, taskId: NovelTaskId): Promise<NovelTask>',
+        description: 'Await the current Host task or return its stored state.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'taskId', description: 'task.' }],
+        returns: 'after owned work settles; persisted tasks are returned immediately.',
+      },
+      {
+        signature: '@Remote(\'cancelTask\') async cancelTask(id: NovelId, taskId: NovelTaskId): Promise<NovelTask>',
+        description: 'Cancel owned model work and wait for durable task settlement.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'taskId', description: 'running task.' }],
+        returns: 'after cancellation and durable settlement.',
+      },
+      {
+        signature: '@Remote(\'applyProposal\') applyProposal( id: NovelId, proposalId: NovelProposalId, revision: number, requestId: NovelRequestId, ): NovelSaveResult',
+        description: 'Apply saved proposal ranges atomically against their original text version.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'proposalId', description: 'saved suggestion.' }, { name: 'revision', description: 'current document version.' }, { name: 'requestId', description: 'retry ID.' }],
+        returns: 'atomically applied text or conflict.',
+      },
+      {
+        signature: '@Remote(\'discardProposal\') discardProposal(id: NovelId, proposalId: NovelProposalId): NovelProposal',
+        description: 'Discard a suggestion without changing the manuscript.',
+        parameters: [{ name: 'id', description: 'project.' }, { name: 'proposalId', description: 'pending suggestion.' }],
+        returns: 'discarded suggestion, leaving text intact.',
+      },
+      {
+        signature: 'registerAssistant(backend: NovelAssistantBackend): () => Promise<void>',
+        description: 'Install the sole model runtime; its disposer drains tasks before withdrawing it.',
+        parameters: [{ name: 'backend', description: 'controlled assistant execution.' }],
+        returns: 'async registration disposer.',
+      },
+      {
+        signature: 'sessionRoutes(): NovelSessionRoute[]',
+        description: 'Read durable Session ownership for the persistence router.',
+        parameters: [],
+        returns: 'all durable novel Session ownership records for the persistence router.',
+      },
+      {
+        signature: 'sessionRoute(sessionId: SessionId): NovelSessionRoute | undefined',
+        description: 'Resolve a Session to its registered novel without changing selection.',
+        parameters: [{ name: 'sessionId', description: 'Session being activated.' }],
+        returns: 'its novel ownership, if any.',
+      },
+      {
+        signature: 'sessionInitialized(sessionId: SessionId): boolean',
+        description: 'Check whether the reserved Session has published its first durable log.',
+        parameters: [{ name: 'sessionId', description: 'registered novel Session.' }],
+        returns: 'whether its first durable log was published.',
+      },
+      {
+        signature: 'markSessionInitialized(sessionId: SessionId): void',
+        description: 'Record the first published Session so missing logs cannot silently start a new conversation.',
+        parameters: [{ name: 'sessionId', description: 'published novel Session.' }],
+      },
+      {
+        signature: 'assertTask(task: NovelTask): void',
+        description: 'Reject execution of a task that differs from its persisted input.',
+        parameters: [{ name: 'task', description: 'task supplied to the execution backend.' }],
+      },
+    ],
+  },
+  {
     key: 'permissionPresets',
     summary: 'Owns the deployment\'s permission presets and their write path.',
     description: 'Owns the deployment\'s permission presets and their write path. Requires a confining `ctx.shell` executor and `ctx.approval`; unmatched knob values are reported as CUSTOM_PRESET, not an error.',
@@ -2310,6 +2470,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'List current projects, including archived ones, sorted by update time then stable identity.',
         parameters: [],
         returns: 'Metadata without creative text bodies; corrupt stored documents throw.',
+      },
+      {
+        signature: '@Remote(\'coverUploadLimit\') coverUploadLimit(): number',
+        description: 'Read the deployment upload limit before selecting a cover.',
+        parameters: [],
+        returns: 'maximum decoded image bytes accepted by setCover.',
+      },
+      {
+        signature: '@Remote(\'setCover\') setCover(id: ProjectId, expectedRevision: number, image: string | null): ProjectCover',
+        description: 'Replace or remove a custom project cover independently of text revisions.',
+        parameters: [{ name: 'id', description: 'existing, non-archived project UUID.' }, { name: 'expectedRevision', description: 'cover revision observed in list(); zero before any upload.' }, { name: 'image', description: 'PNG, JPEG or WebP base64 data URL within coverUploadLimit(), or null to remove it.' }],
+        returns: 'committed cover metadata; invalid images, stale revisions and archived projects throw without writing.',
       },
       {
         signature: '@Remote(\'get\') get(id: ProjectId): Project | null',
@@ -5203,6 +5375,94 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
   },
   {
+    name: 'NovelAssistantBackend',
+    declaration: 'export interface NovelAssistantBackend {\n    execute(task: NovelTask): Promise<NovelAssistantResult>;\n    cancel(id: NovelTaskId): Promise<void>;\n}',
+  },
+  {
+    name: 'NovelAssistantResult',
+    declaration: 'export interface NovelAssistantResult {\n    reply: string;\n    replacements: {\n        spanId: string;\n        replacement: string;\n    }[];\n}',
+  },
+  {
+    name: 'NovelConversation',
+    declaration: 'export interface NovelConversation {\n    sessionId: SessionId;\n    tasks: NovelTask[];\n    proposals: NovelProposal[];\n}',
+  },
+  {
+    name: 'NovelCreate',
+    declaration: 'export interface NovelCreate extends NovelInfo {\n    parentDirectory: string;\n    requestId: NovelRequestId;\n}',
+  },
+  {
+    name: 'NovelDocument',
+    declaration: 'export interface NovelDocument {\n    id: NovelDocumentId;\n    novelId: NovelId;\n    kind: NovelDocumentKind;\n    title: string;\n    position: number;\n    revision: number;\n    content: string;\n    updatedAt: string;\n}',
+  },
+  {
+    name: 'NovelDocumentId',
+    declaration: 'export type NovelDocumentId = Branded<\'NovelDocumentId\'>;',
+  },
+  {
+    name: 'NovelDocumentKind',
+    declaration: 'export type NovelDocumentKind = \'chapter\' | \'outline\' | \'character\' | \'setting\';',
+  },
+  {
+    name: 'NovelId',
+    declaration: 'export type NovelId = Branded<\'NovelId\'>;',
+  },
+  {
+    name: 'NovelInfo',
+    declaration: 'export interface NovelInfo {\n    title: string;\n    synopsis: string;\n}',
+  },
+  {
+    name: 'NovelProject',
+    declaration: 'export interface NovelProject extends NovelInfo {\n    id: NovelId;\n    directory: string;\n    revision: number;\n    chapterCount: number;\n    createdAt: string;\n    updatedAt: string;\n}',
+  },
+  {
+    name: 'NovelProposal',
+    declaration: 'export interface NovelProposal {\n    id: NovelProposalId;\n    taskId: NovelTaskId;\n    documentId: NovelDocumentId;\n    baseRevision: number;\n    changes: {\n        start: number;\n        end: number;\n        before: string;\n        after: string;\n    }[];\n    status: \'pending\' | \'applied\' | \'discarded\';\n    appliedRevision: number | null;\n}',
+  },
+  {
+    name: 'NovelProposalId',
+    declaration: 'export type NovelProposalId = Branded<\'NovelProposalId\'>;',
+  },
+  {
+    name: 'NovelReference',
+    declaration: 'export interface NovelReference {\n    documentId: NovelDocumentId;\n    title: string;\n    revision: number;\n    content: string;\n}',
+  },
+  {
+    name: 'NovelRequestId',
+    declaration: 'export type NovelRequestId = Branded<\'NovelRequestId\'>;',
+  },
+  {
+    name: 'NovelRevision',
+    declaration: 'export interface NovelRevision {\n    documentId: NovelDocumentId;\n    revision: number;\n    title: string;\n    content: string;\n    source: \'manual\' | \'assistant\' | \'restore\';\n    createdAt: string;\n}',
+  },
+  {
+    name: 'NovelSaveResult',
+    declaration: 'export interface NovelSaveResult {\n    status: \'saved\' | \'conflict\';\n    document: NovelDocument;\n}',
+  },
+  {
+    name: 'NovelSelection',
+    declaration: 'export interface NovelSelection {\n    start: number;\n    end: number;\n}',
+  },
+  {
+    name: 'NovelSend',
+    declaration: 'export interface NovelSend {\n    novelId: NovelId;\n    documentId: NovelDocumentId;\n    requestId: NovelRequestId;\n    expectedRevision: number;\n    prompt: string;\n    selection: NovelSelection | null;\n}',
+  },
+  {
+    name: 'NovelSessionRoute',
+    declaration: 'export interface NovelSessionRoute {\n    novelId: NovelId;\n    directory: string;\n    sessionId: SessionId;\n}',
+  },
+  {
+    name: 'NovelSpan',
+    declaration: 'export interface NovelSpan {\n    id: string;\n    start: number;\n    end: number;\n    text: string;\n}',
+  },
+  {
+    name: 'NovelTask',
+    declaration: 'export interface NovelTask {\n    project: NovelInfo;\n    id: NovelTaskId;\n    novelId: NovelId;\n    documentId: NovelDocumentId;\n    sessionId: SessionId;\n    requestId: NovelRequestId;\n    baseRevision: number;\n    prompt: string;\n    title: string;\n    content: string;\n    spans: NovelSpan[];\n    references: NovelReference[];\n    status: \'running\' | \'completed\' | \'failed\' | \'cancelled\' | \'interrupted\';\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
+  },
+  {
+    name: 'NovelTaskId',
+    declaration: 'export type NovelTaskId = Branded<\'NovelTaskId\'>;',
+  },
+  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
@@ -5271,6 +5531,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface Project extends ProjectInput {\n    id: ProjectId;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n    archived: boolean;\n}',
   },
   {
+    name: 'ProjectCover',
+    declaration: 'export interface ProjectCover {\n    revision: number;\n    image: string | null;\n}',
+  },
+  {
     name: 'ProjectId',
     declaration: 'export type ProjectId = Branded<\'StudioProjectId\'>;',
   },
@@ -5300,7 +5564,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ProjectSummary',
-    declaration: 'export interface ProjectSummary {\n    id: ProjectId;\n    name: string;\n    concept: string;\n    aspectRatio: \'16:9\' | \'9:16\' | \'1:1\';\n    targetEpisodes: number | null;\n    episodeDuration: number | null;\n    episodeCount: number;\n    archived: boolean;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n}',
+    declaration: 'export interface ProjectSummary {\n    cover: ProjectCover;\n    id: ProjectId;\n    name: string;\n    concept: string;\n    aspectRatio: \'16:9\' | \'9:16\' | \'1:1\';\n    targetEpisodes: number | null;\n    episodeDuration: number | null;\n    episodeCount: number;\n    archived: boolean;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n}',
   },
   {
     name: 'PromptAssembly',

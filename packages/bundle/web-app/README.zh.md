@@ -27,6 +27,8 @@ kind: "package-bundle"
 
 左侧栏的[漫剧工作台](../../client/ui-multica/README.zh.md)用于管理 Multica 项目和手工草稿。创建和编辑项目不会发起模型调用。
 
+左侧栏的[小说工作区](../../client/ui-novel/README.zh.md)管理独立目录中的作品，支持文档编辑与人工应用 Agent 建议。
+
 启动 GUI、打开浏览器，然后开始与 agent（智能体）对话。flag 用于微调本次调用。
 
 ### 启动 Web GUI

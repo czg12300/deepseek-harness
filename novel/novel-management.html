@@ -1,0 +1,1937 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>小说管理页面</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="小说管理页面" data-srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;小说管理页面&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 10px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+.cursor-interaction {
+  cursor: var(--cursor-interaction, pointer);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: var(--cursor-interaction, pointer);
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn,
+.nav-link {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover,
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, var(--font-size-normal));
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+
+  .form-range::-webkit-slider-runnable-track {
+    height: 44px;
+  }
+
+  .form-range::-moz-range-track {
+    height: 44px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    margin-top: 12px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
+&lt;script&gt;(() =&gt; {
+  const root = document.documentElement;
+  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
+  const apply = Reflect.apply;
+  const isArray = Array.isArray;
+  const hasOwn = Object.hasOwn;
+  const parentWindow = globalThis.parent;
+  const stringify = JSON.stringify;
+  const parse = JSON.parse;
+  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
+  const initialStateElement = document.getElementById(
+    &quot;codex-visualization-widget-state&quot;,
+  );
+  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
+  initialStateElement?.remove();
+  /** @type {Record&lt;string, unknown&gt; | null} */
+  let state = initialGlobals.widgetState ?? null;
+  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
+  let nextStateRequestId = 0;
+  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
+  const pendingStateWrites = new Map();
+  const persistenceError = () =&gt;
+    Object.assign(
+      new Error(&quot;The host could not persist the widget state update&quot;),
+      {
+        code: -32000,
+        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
+      },
+    );
+  /**
+   * @param {object} prototype
+   * @param {string} property
+   */
+  const getPrototypeGetter = (prototype, property) =&gt; {
+    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
+    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
+    if (getter == null) {
+      throw new Error(`Missing ${property} getter`);
+    }
+    return getter;
+  };
+  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
+  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
+  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const addHostMessageListener = MessagePort.prototype.addEventListener;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const postHostMessage = MessagePort.prototype.postMessage;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const startHostPort = MessagePort.prototype.start;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
+  /** @type {MessagePort | null} */
+  let hostPort = null;
+  const postToHost = (type, payload) =&gt; {
+    if (hostPort != null) {
+      apply(postHostMessage, hostPort, [{ type, ...payload }]);
+    }
+  };
+  const openExternal = ({ href }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;open-external&quot;, { href });
+    }
+  };
+  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;follow-up&quot;, { context, prompt, title });
+    }
+    return Promise.resolve();
+  };
+  /**
+   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
+   * @returns {Promise&lt;void&gt;}
+   */
+  const setWidgetState = async (next) =&gt; {
+    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
+    if (
+      nextState == null ||
+      typeof nextState !== &quot;object&quot; ||
+      isArray(nextState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const inputState = stringify(
+      nextState,
+      (_key, /** @type {unknown} */ value) =&gt; {
+        if (
+          typeof value === &quot;undefined&quot; ||
+          typeof value === &quot;function&quot; ||
+          typeof value === &quot;symbol&quot; ||
+          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
+        ) {
+          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+        }
+        return value;
+      },
+    );
+    const parsedState = parse(inputState);
+    if (
+      parsedState == null ||
+      typeof parsedState !== &quot;object&quot; ||
+      isArray(parsedState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const storedState = {
+      modelContent: null,
+      privateContent: null,
+      ...parsedState,
+    };
+    const serializedState = stringify(storedState);
+    if (encode(serializedState).length &gt; 16 * 1024) {
+      throw new TypeError(
+        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
+      );
+    }
+    if (
+      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
+      (!isArray(storedState.imageIds) ||
+        storedState.imageIds.some(
+          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
+        ))
+    ) {
+      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
+    }
+    if (storedState.imageIds?.length &gt; 0) {
+      throw Object.assign(
+        new TypeError(&quot;Visualization state does not support image attachments&quot;),
+        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
+      );
+    }
+    state = storedState;
+    globalThis.openai.widgetState = state;
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: { widgetState: state } },
+      }),
+    );
+    if (statePersistence === &quot;none&quot;) {
+      throw persistenceError();
+    }
+    const id = ++nextStateRequestId;
+    return new Promise((resolve, reject) =&gt; {
+      const timeout = globalThis.setTimeout(() =&gt; {
+        pendingStateWrites.delete(id);
+        reject(persistenceError());
+      }, 30_000);
+      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
+      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+    });
+  };
+  const syncTheme = () =&gt; {
+    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
+    root.dataset.theme = theme;
+    globalThis.openai = {
+      ...globalThis.openai,
+      openExternal,
+      sendFollowUpMessage,
+      setWidgetState,
+      theme,
+      visualizationStyleVariables: {},
+      visualizationTheme: theme,
+      widgetState: state,
+      statePersistence,
+      stateModelContext: &quot;none&quot;,
+    };
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: globalThis.openai },
+      }),
+    );
+  };
+  const sendHeight = () =&gt; {
+    postToHost(&quot;height&quot;, {
+      height: Math.ceil(
+        Math.max(
+          document.body.scrollHeight,
+          document.body.getBoundingClientRect().height,
+        ),
+      ),
+    });
+  };
+
+  globalThis.addEventListener(
+    &quot;message&quot;,
+    (event) =&gt; {
+      const data = apply(getMessageData, event, []);
+      const ports = apply(getMessagePorts, event, []);
+      const source = apply(getMessageSource, event, []);
+      if (
+        hostPort != null ||
+        source !== parentWindow ||
+        typeof data !== &quot;object&quot; ||
+        data?.type !== &quot;codex-visualization-initialize&quot; ||
+        !isArray(ports) ||
+        ports.length !== 1
+      ) {
+        return;
+      }
+      apply(stopMessagePropagation, event, []);
+      const nextHostPort = ports[0];
+      try {
+        apply(addHostMessageListener, nextHostPort, [
+          &quot;message&quot;,
+          (event) =&gt; {
+            const data = apply(getMessageData, event, []);
+            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
+              sendHeight();
+            } else if (
+              typeof data === &quot;object&quot; &amp;&amp;
+              data?.type === &quot;widget-state-result&quot;
+            ) {
+              /** @type {unknown} */
+              const id = data.id;
+              if (typeof id !== &quot;number&quot;) {
+                return;
+              }
+              const pending = pendingStateWrites.get(id);
+              if (pending != null) {
+                pendingStateWrites.delete(id);
+                globalThis.clearTimeout(pending.timeout);
+                if (data.ok === true) {
+                  pending.resolve();
+                } else {
+                  pending.reject(persistenceError());
+                }
+              }
+            }
+          },
+        ]);
+        apply(startHostPort, nextHostPort, []);
+      } catch {
+        return;
+      }
+      hostPort = nextHostPort;
+      for (const [id, { serializedState }] of pendingStateWrites) {
+        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+      }
+      sendHeight();
+    },
+    { capture: true },
+  );
+  document.currentScript?.remove();
+  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
+    if (event.defaultPrevented) {
+      return;
+    }
+    let element = null;
+    if (event.target instanceof globalThis.Element) {
+      element = event.target;
+    } else if (event.target instanceof globalThis.Node) {
+      element = event.target.parentElement;
+    }
+    const link = element?.closest(&quot;a[href]&quot;);
+    const href = link?.getAttribute(&quot;href&quot;);
+    if (href == null) {
+      return;
+    }
+    if (href.startsWith(&quot;#&quot;)) {
+      let id;
+      try {
+        id = decodeURIComponent(href.slice(1));
+      } catch {
+        return;
+      }
+      const target = id.length === 0 ? root : document.getElementById(id);
+      if (
+        target == null ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      event.preventDefault();
+      postToHost(&quot;scroll-to&quot;, {
+        top: target.getBoundingClientRect().top + globalThis.scrollY,
+      });
+      return;
+    }
+    event.preventDefault();
+    openExternal({ href });
+  });
+  new ResizeObserver(sendHeight).observe(document.body);
+  syncTheme();
+})();
+&lt;/script&gt;
+&lt;style&gt;
+#np{color-scheme:light;--np-bg:#fff;--np-side:#f8f9fb;--np-text:#24272c;--np-muted:#818690;--np-border:#e9eaee;--np-blue:#4c7dff;--np-selected:#edf2ff;--np-hover:#f2f4f7;--np-error:#bd3d3d;font:14px/1.6 -apple-system,BlinkMacSystemFont,&quot;PingFang SC&quot;,&quot;Segoe UI&quot;,sans-serif;color:var(--np-text);background:var(--np-bg);border:1px solid var(--np-border);border-radius:9px;overflow:clip;text-align:left}
+#np *{box-sizing:border-box}#np button,#np input,#np textarea{font:inherit;color:inherit}#np button{display:inline-flex;justify-content:center;align-items:center;gap:7px;border:1px solid var(--np-border);background:var(--np-bg);padding:8px 15px;border-radius:8px;white-space:normal}#np button:hover{background:var(--np-hover)}#np button.primary{background:var(--np-blue);border-color:var(--np-blue);color:#fff}#np button.primary:hover{background:#3d6fed}#np button:disabled{opacity:.45;cursor:default}#np button.ghost{background:transparent;border-color:transparent;padding:6px}#np button svg,#np .navitem svg,#np .pathline svg{flex-shrink:0;width:16px;height:16px}#np input,#np textarea{width:100%;padding:11px 13px;border:1px solid #dfe2e8;border-radius:8px;background:var(--np-bg);font-size:15px;line-height:1.6}#np input::placeholder,#np textarea::placeholder{color:#a4a9b2}#np input:focus,#np textarea:focus{outline:2px solid #dce7ff;border-color:#88a7ff}#np textarea{resize:vertical;min-height:118px}#np h1{font-size:23px;line-height:1.4;font-weight:500;margin:0 0 8px}#np h2{font-size:18px;font-weight:500;margin:0 0 9px}#np h3{font-size:16px;font-weight:500;margin:0}#np p{margin:0}#np .small{font-size:12px}#np .muted{color:var(--np-muted)}#np .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}#np .between{justify-content:space-between}#np .layout{display:grid;grid-template-columns:188px minmax(0,1fr);min-height:700px}#np .sidebar{background:var(--np-side);border-right:1px solid var(--np-border);padding:19px 12px;display:flex;flex-direction:column}#np .brand{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 5px 20px}#np .brandname{font-size:14px;font-weight:500;line-height:1.4}#np .build{font:9px/1.4 ui-monospace,SFMono-Regular,monospace;color:#fff;background:#2b2e33;border-radius:2px;padding:1px 3px;display:inline-block;letter-spacing:.01em}#np .new-session{width:100%;margin-bottom:15px;height:39px;background:var(--np-bg);border:1px solid var(--np-border);border-radius:9px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px}#np .new-session svg{width:16px;height:16px}#np .navitem{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13px;color:#767c85;border-radius:7px}#np button.navitem{justify-content:flex-start;width:100%;border:0}#np .navitem.selected{background:var(--np-selected);color:var(--np-blue)}#np .workspace-title{margin:19px 5px 12px;display:flex;align-items:center;justify-content:space-between;color:#9298a2;font-size:12px}#np .workspace-title svg{width:14px;height:14px}#np .foldername{font-size:12px;padding:7px 9px;display:flex;gap:7px;align-items:center}#np .foldername svg{width:15px;height:15px;color:var(--np-blue)}#np .sessionname{padding:7px 8px 7px 24px;font-size:11px;display:flex;justify-content:space-between;gap:5px;color:#757b85}#np .settings{margin-top:auto;padding-top:45px}#np .main{min-width:0;position:relative}#np .header{min-height:65px;border-bottom:1px solid var(--np-border);padding:14px 27px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}#np .crumb{display:flex;align-items:center;gap:12px;font-size:14px}#np .crumb .sep{color:#c5c8cd}#np .prototype{font-size:11px;color:#979ca5}#np .header button{font-size:13px;padding:7px 12px}#np .formwrap{max-width:602px;margin:0 auto;padding:42px 30px 44px}#np .intro{font-size:13px;color:var(--np-muted);margin-top:8px;margin-bottom:29px}#np .field{display:block;margin-bottom:24px}#np .field-label{display:block;font-size:13px;font-weight:500;margin-bottom:9px}#np .pathcontrol{display:flex;align-items:center;gap:8px;border:1px solid #dfe2e8;padding:6px 7px 6px 12px;border-radius:8px;min-height:46px}#np .pathcontrol&gt;svg{width:17px;height:17px;color:#8b929c;flex-shrink:0}#np .pathvalue{min-width:0;flex:1;font-size:12px;overflow-wrap:anywhere}#np .pathcontrol button{font-size:12px;padding:5px 9px;flex-shrink:0}#np .helper{font-size:12px;color:var(--np-muted);margin-top:9px}#np .destination{margin-top:13px;background:#f8f9fb;padding:12px 14px;border-radius:7px;font-size:12px;color:#737b88;overflow-wrap:anywhere}#np .destination strong{font-weight:500;color:#484f5b}#np .actions{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--np-border);padding-top:21px;margin-top:30px}#np .error{font-size:12px;color:var(--np-error);margin:12px 0}#np .library{padding:30px 27px 40px}#np .library-title{display:flex;align-items:baseline;gap:10px;margin-bottom:25px}#np .library-title h1{font-size:20px;margin:0}#np .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}#np .novelcard{border:1px solid var(--np-border);border-radius:11px;padding:22px 21px;background:#fff;display:flex;flex-direction:column;min-width:0}#np .novelcard&gt;button{justify-content:flex-start;background:transparent;border:0;padding:0;text-align:left;font-size:16px;font-weight:500;margin-bottom:12px;align-self:flex-start}#np .novelcard&gt;button:hover{color:var(--np-blue)}#np .novelcard&gt;button svg{color:var(--np-blue);width:18px;height:18px}#np .synopsis{font-size:13px;line-height:1.8;color:#777e89;min-height:70px;margin-bottom:20px;overflow-wrap:anywhere}#np .pathline{display:flex;gap:6px;font-size:11px;color:#9298a1;align-items:flex-start;margin-top:auto;overflow-wrap:anywhere}#np .pathline svg{width:13px;height:13px;margin-top:3px}#np .cardfoot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:#9097a0;border-top:1px solid #f0f1f4;margin-top:15px;padding-top:12px}#np .cardfoot button{font-size:11px;padding:3px 7px;border:0;color:var(--np-blue);background:transparent}#np .success{display:flex;align-items:center;gap:8px;color:#327051;background:#eff8f2;padding:11px 14px;border-radius:7px;font-size:13px;margin-bottom:22px}#np .success svg{width:16px;height:16px}#np .pickbox{border:1px solid #dfe2e8;background:#fafbfc;padding:15px;border-radius:8px;margin-top:10px}#np .pickrow{width:100%;justify-content:flex-start;margin:6px 0;font-size:12px;text-align:left;overflow-wrap:anywhere}#np .pickhead{font-size:12px;color:#737b88;margin-bottom:10px}#np .detail{max-width:630px;padding:40px 30px;margin:0 auto}#np .detail-summary{font-size:14px;line-height:1.9;margin:22px 0 31px;color:#68717d;white-space:pre-wrap;overflow-wrap:anywhere}#np .detail-path{border-top:1px solid var(--np-border);padding-top:22px;margin-top:22px;font-size:12px;color:#737b88}#np .detail-path div{margin-top:8px;overflow-wrap:anywhere;color:#404a58}#np .empty-chapters{border:1px solid var(--np-border);border-radius:8px;padding:21px;margin-top:30px;color:#979ca5;font-size:13px}#np .bottom-status{border-top:1px solid var(--np-border);padding:8px 15px;color:#979ca5;font-size:11px;background:#fff}#np[data-collapsed=true] .layout{grid-template-columns:minmax(0,1fr)}#np[data-collapsed=true] .sidebar{display:none}#np .mobile-brand{display:none}
+@media(max-width:760px){#np .layout{grid-template-columns:155px minmax(0,1fr)}#np .grid{grid-template-columns:minmax(0,1fr)}#np .formwrap{padding:31px 24px}#np .header{padding:15px 22px}#np .brandname{font-size:12px}#np .build{font-size:8px}#np .library{padding:25px 23px}#np .sessionname{padding-left:13px}}
+@media(max-width:520px){#np .layout{display:block;min-height:0}#np .sidebar{padding:12px;border-right:0;border-bottom:1px solid var(--np-border)}#np .brand{padding-bottom:10px}#np .brandname{font-size:14px}#np .build,#np .new-session,#np .workspace-title,#np .foldername,#np .sessionname,#np .settings,#np .sidebar&gt;.navitem:not(.selected){display:none}#np button.navitem{padding:7px 9px}#np .header{padding:13px 17px;min-height:56px}#np .formwrap{padding:27px 19px}#np .library{padding:24px 18px}#np .pathcontrol{flex-wrap:wrap}#np .pathcontrol .pathvalue{flex:1 1 150px}#np .pathcontrol button{margin-left:auto}#np .grid{gap:14px}#np h1{font-size:21px}#np .detail{padding:28px 20px}#np .pickrow{font-size:11px}#np button{min-height:38px}}
+&lt;/style&gt;
+&lt;div id=&quot;np&quot; aria-label=&quot;DSH 小说管理首页&quot; data-collapsed=&quot;false&quot;&gt;
+  &lt;div class=&quot;layout&quot;&gt;
+    &lt;aside class=&quot;sidebar&quot; aria-label=&quot;应用侧栏&quot;&gt;
+      &lt;div class=&quot;brand&quot;&gt;&lt;div&gt;&lt;div class=&quot;brandname&quot;&gt;DSH 本地构建&lt;/div&gt;&lt;span class=&quot;build&quot;&gt;local development&lt;/span&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;ghost cursor-interaction&quot; data-action=&quot;collapse&quot; aria-label=&quot;收起侧栏&quot;&gt;&lt;i data-lucide=&quot;panel-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
+      &lt;div class=&quot;new-session&quot;&gt;&lt;i data-lucide=&quot;circle-plus&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;新会话&lt;/div&gt;
+      &lt;div class=&quot;navitem&quot;&gt;&lt;i data-lucide=&quot;panels-top-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;漫剧&lt;/div&gt;
+      &lt;button type=&quot;button&quot; class=&quot;navitem selected cursor-interaction&quot; data-action=&quot;library&quot; aria-current=&quot;page&quot;&gt;&lt;i data-lucide=&quot;book-open&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;小说&lt;/button&gt;
+      &lt;div class=&quot;workspace-title&quot;&gt;&lt;span&gt;工作区&lt;/span&gt;&lt;div class=&quot;row&quot;&gt;&lt;i data-lucide=&quot;search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;sliders-horizontal&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;i data-lucide=&quot;folder-plus&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;foldername&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;漫剧&lt;/div&gt;&lt;div class=&quot;sessionname&quot;&gt;&lt;span&gt;询问模型身份&lt;/span&gt;&lt;span&gt;5天&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;settings&quot;&gt;&lt;div class=&quot;navitem&quot;&gt;&lt;i data-lucide=&quot;settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;设置&lt;/div&gt;&lt;/div&gt;
+    &lt;/aside&gt;
+    &lt;section class=&quot;main&quot; aria-label=&quot;小说项目&quot;&gt;&lt;header class=&quot;header&quot; id=&quot;np-header&quot;&gt;&lt;/header&gt;&lt;main id=&quot;np-content&quot;&gt;&lt;/main&gt;&lt;/section&gt;
+  &lt;/div&gt;&lt;div class=&quot;bottom-status&quot; id=&quot;np-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;界面原型 · 文件夹选择为演示，不会读写本地文件&lt;/div&gt;
+&lt;/div&gt;
+&lt;script&gt;
+(()=&gt;{
+const root=document.getElementById(&#x27;np&#x27;),header=root.querySelector(&#x27;#np-header&#x27;),content=root.querySelector(&#x27;#np-content&#x27;);
+const base=&#x27;/Users/jake/Documents/小说&#x27;;
+const seed=[{id:&#x27;rain&#x27;,title:&#x27;雨夜来信&#x27;,intro:&#x27;一封没有署名的信，将城南的年轻调查者卷入一桩跨越十年的失踪案。&#x27;,path:base+&#x27;/雨夜来信&#x27;,updated:&#x27;今天&#x27;,chapters:12},{id:&#x27;star&#x27;,title:&#x27;第七行星&#x27;,intro:&#x27;在一颗被遗忘的殖民星球上，一位维修师发现每个人的记忆都被悄悄修改过。&#x27;,path:base+&#x27;/第七行星&#x27;,updated:&#x27;昨天&#x27;,chapters:6},{id:&#x27;summer&#x27;,title:&#x27;夏日未完&#x27;,intro:&#x27;多年后重逢的两个人，决定一起完成十八岁那年没能实现的旅行。&#x27;,path:base+&#x27;/夏日未完&#x27;,updated:&#x27;3 天前&#x27;,chapters:0}];
+seed.unshift({id:&#x27;city&#x27;,title:&#x27;城南夜渡&#x27;,intro:&#x27;一封送错的密信，让年轻调查者走进雨夜的渡口。他发现，等候自己的人早已知道他的名字。&#x27;,path:base+&#x27;/城南夜渡&#x27;,updated:&#x27;刚刚&#x27;,chapters:0});
+const state={view:&#x27;library&#x27;,title:&#x27;&#x27;,intro:&#x27;&#x27;,folder:&#x27;&#x27;,picker:false,importing:false,selected:null,notice:&#x27;&#x27;,error:&#x27;&#x27;,collapsed:false,projects:seed.map(x=&gt;({...x}))};
+let savedSnapshot=&#x27;&#x27;;
+const esc=s=&gt;String(s).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g,c=&gt;({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[c]));
+const button=(label,action,primary=false,icon=&#x27;&#x27;)=&gt;`&lt;button type=&quot;button&quot; class=&quot;${primary?&#x27;primary &#x27;:&#x27;&#x27;}cursor-interaction&quot; data-action=&quot;${action}&quot;&gt;${icon?`&lt;i data-lucide=&quot;${icon}&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;`:&#x27;&#x27;}${label}&lt;/button&gt;`;
+function icons(){if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}})}
+function restore(saved){const p=saved&amp;&amp;saved.privateContent;if(!p||p.version!==2)return;const d=p.draft||{};for(const k of [&#x27;title&#x27;,&#x27;intro&#x27;,&#x27;folder&#x27;])if(typeof d[k]===&#x27;string&#x27;)state[k]=d[k].slice(0,k===&#x27;intro&#x27;?2000:300);if([&#x27;create&#x27;,&#x27;library&#x27;,&#x27;detail&#x27;].includes(p.view))state.view=p.view;if(Array.isArray(p.projects)&amp;&amp;p.projects.length&lt;=12){const valid=p.projects.filter(x=&gt;x&amp;&amp;typeof x.id===&#x27;string&#x27;&amp;&amp;typeof x.title===&#x27;string&#x27;&amp;&amp;typeof x.intro===&#x27;string&#x27;&amp;&amp;typeof x.path===&#x27;string&#x27;);if(valid.length===p.projects.length)state.projects=valid}if(typeof p.selected===&#x27;string&#x27;)state.selected=p.selected;if(state.view===&#x27;detail&#x27;&amp;&amp;!state.projects.some(p=&gt;p.id===state.selected))state.view=&#x27;library&#x27;}
+function persist(){const api=window.openai;if(!api||typeof api.setWidgetState!==&#x27;function&#x27;)return;const privateContent={version:2,view:state.view,draft:{title:state.title,intro:state.intro,folder:state.folder},projects:state.projects.slice(0,8),selected:state.selected};while(new TextEncoder().encode(JSON.stringify(privateContent)).length&gt;14000&amp;&amp;privateContent.projects.length)privateContent.projects.pop();savedSnapshot=JSON.stringify(privateContent);api.setWidgetState({modelContent:{module:&#x27;小说管理&#x27;,view:state.view,projectCount:state.projects.length,creationFields:[&#x27;作品名&#x27;,&#x27;小说简介&#x27;,&#x27;小说存放文件夹&#x27;]},privateContent}).catch(()=&gt;{})}
+function setStatus(t){root.querySelector(&#x27;#np-status&#x27;).textContent=t}
+function dirname(){return state.title.trim().replace(/[\\/:*?&quot;&lt;&gt;|\u0000-\u001f]/g,&#x27;_&#x27;).replace(/[. ]+$/,&#x27;&#x27;)||&#x27;作品名&#x27;}
+function target(){return state.folder.replace(/\/$/,&#x27;&#x27;)+&#x27;/&#x27;+dirname()}
+function head(){root.dataset.collapsed=String(state.collapsed);let crumb=state.view===&#x27;create&#x27;?&#x27;创建小说&#x27;:state.view===&#x27;edit&#x27;?&#x27;编辑作品信息&#x27;:state.view===&#x27;detail&#x27;?(state.projects.find(x=&gt;x.id===state.selected)?.title||&#x27;作品&#x27;):&#x27;全部作品&#x27;;header.innerHTML=`&lt;div class=&quot;crumb&quot;&gt;${state.collapsed?&#x27;&lt;button type=&quot;button&quot; class=&quot;ghost cursor-interaction&quot; data-action=&quot;collapse&quot; aria-label=&quot;展开侧栏&quot;&gt;&lt;i data-lucide=&quot;panel-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&#x27;:&#x27;&#x27;}&lt;button type=&quot;button&quot; class=&quot;ghost cursor-interaction&quot; data-action=&quot;library&quot;&gt;小说&lt;/button&gt;&lt;span class=&quot;sep&quot;&gt;/&lt;/span&gt;&lt;span&gt;${esc(crumb)}&lt;/span&gt;&lt;/div&gt;${state.view===&#x27;library&#x27;?`&lt;div class=&quot;row&quot;&gt;${button(&#x27;导入&#x27;,&#x27;import&#x27;,false,&#x27;folder-input&#x27;)}${button(&#x27;创建&#x27;,&#x27;new&#x27;,true,&#x27;plus&#x27;)}&lt;/div&gt;`:&#x27;&lt;span class=&quot;prototype&quot;&gt;界面示意&lt;/span&gt;&#x27;}`}
+function form(){content.innerHTML=`&lt;div class=&quot;formwrap&quot;&gt;&lt;h1&gt;创建小说&lt;/h1&gt;&lt;p class=&quot;intro&quot;&gt;创建一部作品，开始你的小说创作。&lt;/p&gt;&lt;form id=&quot;np-form&quot;&gt;&lt;label class=&quot;field&quot;&gt;&lt;span class=&quot;field-label&quot;&gt;作品名&lt;/span&gt;&lt;input id=&quot;np-title&quot; name=&quot;title&quot; required maxlength=&quot;80&quot; autocomplete=&quot;off&quot; placeholder=&quot;输入作品名&quot; value=&quot;${esc(state.title)}&quot;&gt;&lt;/label&gt;&lt;label class=&quot;field&quot;&gt;&lt;span class=&quot;field-label&quot;&gt;小说简介&lt;/span&gt;&lt;textarea id=&quot;np-intro&quot; name=&quot;intro&quot; required maxlength=&quot;2000&quot; placeholder=&quot;简单介绍你想写的故事&quot;&gt;${esc(state.intro)}&lt;/textarea&gt;&lt;/label&gt;&lt;div class=&quot;field&quot;&gt;&lt;label class=&quot;field-label&quot; id=&quot;np-folder-label&quot;&gt;小说存放文件夹&lt;/label&gt;&lt;div class=&quot;pathcontrol&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;pathvalue ${state.folder?&#x27;&#x27;:&#x27;muted&#x27;}&quot; id=&quot;np-folder-value&quot;&gt;${state.folder?esc(state.folder):&#x27;请选择存放位置&#x27;}&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-action=&quot;choose&quot; aria-labelledby=&quot;np-folder-label np-picktext&quot;&gt;&lt;span id=&quot;np-picktext&quot;&gt;${state.folder?&#x27;更改&#x27;:&#x27;选择文件夹&#x27;}&lt;/span&gt;&lt;/button&gt;&lt;/div&gt;&lt;div id=&quot;np-picker&quot;&gt;${state.picker?picker(false):&#x27;&#x27;}&lt;/div&gt;&lt;p class=&quot;helper&quot;&gt;将在所选文件夹内，为这部小说创建一个独立目录。&lt;/p&gt;&lt;div id=&quot;np-destination&quot; class=&quot;destination&quot; ${state.folder?&#x27;&#x27;:&#x27;hidden&#x27;}&gt;&lt;div&gt;作品保存位置&lt;/div&gt;&lt;strong id=&quot;np-target&quot;&gt;${state.folder?esc(target()):&#x27;&#x27;}&lt;/strong&gt;&lt;/div&gt;&lt;/div&gt;&lt;p class=&quot;error&quot; id=&quot;np-error&quot; role=&quot;alert&quot; ${state.error?&#x27;&#x27;:&#x27;hidden&#x27;}&gt;${esc(state.error)}&lt;/p&gt;&lt;div class=&quot;actions&quot;&gt;${button(&#x27;取消&#x27;,&#x27;library&#x27;)}&lt;button type=&quot;button&quot; data-action=&quot;create&quot; class=&quot;primary cursor-interaction&quot; id=&quot;np-submit&quot; ${valid()?&#x27;&#x27;:&#x27;disabled&#x27;}&gt;创建小说&lt;/button&gt;&lt;/div&gt;&lt;/form&gt;&lt;/div&gt;`;content.querySelector(&#x27;#np-form&#x27;).addEventListener(&#x27;submit&#x27;,e=&gt;{e.preventDefault();create()})}
+function valid(){return Boolean(state.title.trim()&amp;&amp;state.intro.trim()&amp;&amp;state.folder)}
+function picker(importing){if(importing)return `&lt;div class=&quot;pickbox&quot;&gt;&lt;div class=&quot;row between&quot;&gt;&lt;span class=&quot;pickhead&quot;&gt;选择已有小说目录 · 演示&lt;/span&gt;${button(&#x27;取消&#x27;,&#x27;cancel-import&#x27;)}&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;pickrow cursor-interaction&quot; data-import-path=&quot;${esc(base+&#x27;/山海旧闻&#x27;)}&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;${esc(base+&#x27;/山海旧闻&#x27;)}&lt;/span&gt;&lt;/button&gt;&lt;p class=&quot;small muted&quot;&gt;识别作品信息并加入列表，原目录保持不变。&lt;/p&gt;&lt;/div&gt;`;return `&lt;div class=&quot;pickbox&quot;&gt;&lt;div class=&quot;pickhead&quot;&gt;选择存放文件夹 · 演示&lt;/div&gt;${[base,&#x27;/Users/jake/Documents/写作项目&#x27;].map(p=&gt;`&lt;button type=&quot;button&quot; class=&quot;pickrow cursor-interaction&quot; data-folder=&quot;${esc(p)}&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;${esc(p)}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;`}
+function library(){content.innerHTML=`&lt;div class=&quot;library&quot;&gt;${state.notice?`&lt;div class=&quot;success&quot;&gt;&lt;i data-lucide=&quot;circle-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;${esc(state.notice)}&lt;/div&gt;`:&#x27;&#x27;}&lt;div class=&quot;library-title&quot;&gt;&lt;h1&gt;我的小说&lt;/h1&gt;&lt;span class=&quot;small muted&quot;&gt;${state.projects.length} 部作品&lt;/span&gt;&lt;/div&gt;${state.importing?picker(true):&#x27;&#x27;}&lt;div class=&quot;grid&quot; style=&quot;${state.importing?&#x27;margin-top:22px&#x27;:&#x27;&#x27;}&quot;&gt;${state.projects.map(p=&gt;`&lt;article class=&quot;novelcard&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-open=&quot;${esc(p.id)}&quot;&gt;&lt;i data-lucide=&quot;book-open&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;${esc(p.title)}&lt;/button&gt;&lt;p class=&quot;synopsis&quot;&gt;${esc(p.intro.length&gt;90?p.intro.slice(0,90)+&#x27;…&#x27;:p.intro)}&lt;/p&gt;&lt;div class=&quot;pathline&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;${esc(p.path)}&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;cardfoot&quot;&gt;&lt;span&gt;${esc(p.updated||&#x27;刚刚&#x27;)}更新 · ${Number(p.chapters)||0} 章&lt;/span&gt;&lt;div class=&quot;row&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-edit=&quot;${esc(p.id)}&quot; aria-label=&quot;编辑${esc(p.title)}的作品信息&quot;&gt;编辑&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-open=&quot;${esc(p.id)}&quot;&gt;打开作品 &lt;i data-lucide=&quot;arrow-up-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/article&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;&lt;/div&gt;`}
+function detail(){const p=state.projects.find(x=&gt;x.id===state.selected);if(!p){state.view=&#x27;library&#x27;;render();return}content.innerHTML=`&lt;div class=&quot;detail&quot;&gt;&lt;div class=&quot;row between&quot;&gt;&lt;h1&gt;${esc(p.title)}&lt;/h1&gt;&lt;span class=&quot;small muted&quot;&gt;${Number(p.chapters)||0} 章&lt;/span&gt;&lt;/div&gt;&lt;p class=&quot;detail-summary&quot;&gt;${esc(p.intro)}&lt;/p&gt;&lt;div class=&quot;detail-path&quot;&gt;小说文件夹&lt;div class=&quot;row&quot;&gt;&lt;i data-lucide=&quot;folder&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;${esc(p.path)}&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;empty-chapters&quot;&gt;${Number(p.chapters)?&#x27;已打开作品项目。章节编辑将在后续模块中设计。&#x27;:&#x27;作品已创建，还没有章节。&#x27;}&lt;/div&gt;&lt;div class=&quot;actions&quot;&gt;${button(&#x27;返回小说列表&#x27;,&#x27;library&#x27;)}&lt;/div&gt;&lt;/div&gt;`}
+function edit(){const p=state.projects.find(x=&gt;x.id===state.selected);if(!p){state.view=&#x27;library&#x27;;render();return}content.innerHTML=`&lt;div class=&quot;formwrap&quot;&gt;&lt;h1&gt;编辑作品信息&lt;/h1&gt;&lt;p class=&quot;intro&quot;&gt;修改作品名和简介。&lt;/p&gt;&lt;label class=&quot;field&quot;&gt;&lt;span class=&quot;field-label&quot;&gt;作品名&lt;/span&gt;&lt;input id=&quot;np-edit-title&quot; maxlength=&quot;80&quot; value=&quot;${esc(p.title)}&quot;&gt;&lt;/label&gt;&lt;label class=&quot;field&quot;&gt;&lt;span class=&quot;field-label&quot;&gt;小说简介&lt;/span&gt;&lt;textarea id=&quot;np-edit-intro&quot; maxlength=&quot;2000&quot;&gt;${esc(p.intro)}&lt;/textarea&gt;&lt;/label&gt;&lt;div class=&quot;destination&quot;&gt;&lt;div&gt;小说文件夹&lt;/div&gt;&lt;strong&gt;${esc(p.path)}&lt;/strong&gt;&lt;/div&gt;&lt;p class=&quot;helper&quot;&gt;修改作品名不会自动重命名或移动文件夹。&lt;/p&gt;&lt;p class=&quot;error&quot; id=&quot;np-edit-error&quot; role=&quot;alert&quot; hidden&gt;&lt;/p&gt;&lt;div class=&quot;actions&quot;&gt;${button(&#x27;取消&#x27;,&#x27;library&#x27;)}${button(&#x27;保存修改&#x27;,&#x27;save-edit&#x27;,true)}&lt;/div&gt;&lt;/div&gt;`}
+function render(){head();({create:form,library,detail,edit}[state.view]||form)();icons()}
+root.addEventListener(&#x27;click&#x27;,e=&gt;{const b=e.target.closest(&#x27;button&#x27;);if(!b)return;if(b.dataset.edit){state.selected=b.dataset.edit;state.view=&#x27;edit&#x27;;state.notice=&#x27;&#x27;;render();return}if(b.dataset.action===&#x27;save-edit&#x27;){const title=root.querySelector(&#x27;#np-edit-title&#x27;).value.trim(),intro=root.querySelector(&#x27;#np-edit-intro&#x27;).value.trim();if(!title||!intro){const error=root.querySelector(&#x27;#np-edit-error&#x27;);error.hidden=false;error.textContent=&#x27;请填写作品名和小说简介。&#x27;;return}const p=state.projects.find(x=&gt;x.id===state.selected);p.title=title;p.intro=intro;p.updated=&#x27;刚刚&#x27;;state.view=&#x27;library&#x27;;state.notice=&#x27;“&#x27;+title+&#x27;”的作品信息已更新&#x27;;render();setStatus(&#x27;编辑流程演示完成 · 本地文件未被修改&#x27;);persist()}});
+function updateForm(){const b=root.querySelector(&#x27;#np-submit&#x27;);if(b)b.disabled=!valid();const targetEl=root.querySelector(&#x27;#np-target&#x27;);if(targetEl)targetEl.textContent=state.folder?target():&#x27;&#x27;;state.error=&#x27;&#x27;;const errorEl=root.querySelector(&#x27;#np-error&#x27;);if(errorEl){errorEl.hidden=true;errorEl.textContent=&#x27;&#x27;}}
+function fail(message){state.error=message;const el=root.querySelector(&#x27;#np-error&#x27;);el.hidden=false;el.textContent=message}
+function create(){if(!valid()){fail(&#x27;请填写作品名、小说简介，并选择存放文件夹。&#x27;);return}if(!dirname()||[&#x27;.&#x27;,&#x27;..&#x27;].includes(state.title.trim())){fail(&#x27;请使用有效的作品名。&#x27;);return}if(state.projects.some(p=&gt;p.path===target())){fail(&#x27;该位置已有同名小说目录，请修改作品名或更换存放文件夹。&#x27;);return}if(state.projects.length&gt;=8){fail(&#x27;演示最多保留 8 部作品。&#x27;);return}const id=&#x27;novel-&#x27;+Date.now();state.projects.unshift({id,title:state.title.trim(),intro:state.intro.trim(),path:target(),updated:&#x27;刚刚&#x27;,chapters:0});state.selected=id;state.notice=&#x27;“&#x27;+state.title.trim()+&#x27;”已创建&#x27;;state.view=&#x27;library&#x27;;state.picker=false;state.importing=false;render();setStatus(&#x27;创建流程演示完成 · 小说已加入列表，未实际创建本地目录&#x27;);persist()}
+root.addEventListener(&#x27;input&#x27;,e=&gt;{if(e.target.id===&#x27;np-title&#x27;)state.title=e.target.value;if(e.target.id===&#x27;np-intro&#x27;)state.intro=e.target.value;updateForm()});
+root.addEventListener(&#x27;change&#x27;,e=&gt;{if([&#x27;np-title&#x27;,&#x27;np-intro&#x27;].includes(e.target.id))persist()});
+root.addEventListener(&#x27;click&#x27;,e=&gt;{const b=e.target.closest(&#x27;button&#x27;);if(!b||!root.contains(b))return;if(b.dataset.folder){state.folder=b.dataset.folder;state.picker=false;render();persist();return}if(b.dataset.open){state.selected=b.dataset.open;state.view=&#x27;detail&#x27;;render();persist();return}if(b.dataset.importPath){const path=b.dataset.importPath;let existing=state.projects.find(p=&gt;p.path===path);if(!existing){existing={id:&#x27;import-shanhai&#x27;,title:&#x27;山海旧闻&#x27;,intro:&#x27;一位记录异闻的旅人，在山川与城镇之间寻找失落的故乡。&#x27;,path,updated:&#x27;刚刚&#x27;,chapters:3};state.projects.unshift(existing)}state.notice=&#x27;已导入“&#x27;+existing.title+&#x27;”&#x27;;state.importing=false;render();setStatus(&#x27;导入流程演示完成 · 未读取或移动真实文件&#x27;);persist();return}switch(b.dataset.action){case&#x27;create&#x27;:create();break;case&#x27;library&#x27;:state.view=&#x27;library&#x27;;state.picker=false;state.importing=false;render();persist();break;case&#x27;new&#x27;:state.view=&#x27;create&#x27;;state.title=&#x27;&#x27;;state.intro=&#x27;&#x27;;state.folder=&#x27;&#x27;;state.error=&#x27;&#x27;;state.notice=&#x27;&#x27;;render();persist();break;case&#x27;choose&#x27;:state.picker=!state.picker;render();break;case&#x27;import&#x27;:state.importing=true;state.notice=&#x27;&#x27;;render();break;case&#x27;cancel-import&#x27;:state.importing=false;render();break;case&#x27;collapse&#x27;:state.collapsed=!state.collapsed;head();icons();break}});
+restore(window.openai&amp;&amp;window.openai.widgetState);render();window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{const g=e.detail&amp;&amp;e.detail.globals;if(g&amp;&amp;Object.prototype.hasOwnProperty.call(g,&#x27;widgetState&#x27;)){if(JSON.stringify(g.widgetState&amp;&amp;g.widgetState.privateContent)===savedSnapshot)return;restore(g.widgetState);render()}});
+})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
+    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
+    document.removeEventListener(&quot;click&quot;, handleTouchClick);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
+  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
+  document.addEventListener(&quot;click&quot;, handleTouchClick);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+<script>(() => {
+  const frame = document.getElementById("codex-visualization");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+  let viewportHeight = globalThis.innerHeight;
+  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
+    globalThis.location.pathname,
+    globalThis.location.search,
+  ])}`;
+  const parseState = (serializedState) => {
+    if (
+      typeof serializedState !== "string" ||
+      new TextEncoder().encode(serializedState).length > 16 * 1024
+    ) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    /** @type {unknown} */
+    const state = JSON.parse(serializedState);
+    if (
+      state == null ||
+      typeof state !== "object" ||
+      Array.isArray(state) ||
+      ("imageIds" in state &&
+        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
+    ) {
+      throw new TypeError("Widget state must be a JSON object");
+    }
+    const storedState = { modelContent: null, privateContent: null, ...state };
+    const canonicalState = JSON.stringify(
+      storedState,
+      (_key, /** @type {unknown} */ value) => {
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new TypeError("Widget state must contain finite numbers");
+        }
+        return value;
+      },
+    );
+    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    return storedState;
+  };
+  let storage = null;
+  let state = null;
+  try {
+    const localStorage = globalThis.localStorage;
+    const probeKey = `${storageKey}:probe`;
+    localStorage.setItem(probeKey, "1");
+    localStorage.removeItem(probeKey);
+    storage = localStorage;
+    const savedState = storage.getItem(storageKey);
+    if (savedState != null) {
+      try {
+        state = parseState(savedState);
+      } catch {
+        // Invalid saved state does not disable future writes.
+      }
+    }
+  } catch {
+    storage = null;
+  }
+  const initialGlobals = {
+    widgetState: state,
+    statePersistence: storage == null ? "none" : "local",
+  };
+
+  const channel = new MessageChannel();
+  channel.port1.addEventListener("message", (event) => {
+    const data = event.data;
+    if (typeof data !== "object" || data == null) {
+      return;
+    }
+    if (data.type === "widget-state-write") {
+      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
+        return;
+      }
+      let ok = false;
+      try {
+        if (storage != null) {
+          const state = parseState(data.state);
+          storage.setItem(storageKey, JSON.stringify(state));
+          ok = true;
+        }
+      } catch {
+        // Storage denial, quota limits, and invalid state return a failed receipt.
+      }
+      channel.port1.postMessage({
+        type: "widget-state-result",
+        id: data.id,
+        ok,
+      });
+      return;
+    }
+    if (data.type === "height") {
+      const height = data.height;
+      if (
+        typeof height === "number" &&
+        Number.isFinite(height) &&
+        height >= 0 &&
+        height <= 10_000
+      ) {
+        frame.style.height = Math.ceil(height) + "px";
+      }
+      return;
+    }
+    if (data.type === "scroll-to") {
+      const top = data.top;
+      if (
+        typeof top === "number" &&
+        Number.isFinite(top) &&
+        top >= 0 &&
+        globalThis.navigator.userActivation?.isActive === true
+      ) {
+        globalThis.scrollTo({
+          top: Math.ceil(
+            globalThis.scrollY + frame.getBoundingClientRect().top + top,
+          ),
+        });
+      }
+      return;
+    }
+    if (data.type === "open-external") {
+      const rawHref = data.href;
+      if (typeof rawHref !== "string") {
+        return;
+      }
+      let href;
+      try {
+        const url = new URL(rawHref, document.baseURI);
+        if (url.protocol !== "https:") {
+          return;
+        }
+        href = url.href;
+      } catch {
+        return;
+      }
+      if (globalThis.navigator.userActivation?.isActive === true) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.rel = "noopener noreferrer";
+        anchor.target = "_blank";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      return;
+    }
+    if (data.type === "follow-up") {
+      const prompt = data.prompt;
+      if (
+        typeof prompt !== "string" ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      const title = data.title;
+      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
+    }
+  });
+  channel.port1.start();
+  const srcdoc = frame.dataset.srcdoc;
+  if (srcdoc == null) {
+    return;
+  }
+  globalThis.addEventListener("resize", () => {
+    const height = Number.parseFloat(frame.style.height);
+    if (!Number.isFinite(height) || height <= viewportHeight) {
+      frame.style.removeProperty("height");
+    }
+    viewportHeight = globalThis.innerHeight;
+    channel.port1.postMessage({ type: "measure" });
+  });
+  frame.addEventListener(
+    "load",
+    () => {
+      frame.contentWindow?.postMessage(
+        { type: "codex-visualization-initialize" },
+        "*",
+        [channel.port2],
+      );
+    },
+    { once: true },
+  );
+  // Match the trusted bootstrap element, not the same text in an authored title.
+  frame.srcdoc = srcdoc.replace(
+    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
+    () =>
+      '<script type="application/json" id="codex-visualization-widget-state">' +
+      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
+      "<\/script>",
+  );
+  delete frame.dataset.srcdoc;
+})();
+</script>
+</body>
+</html>
