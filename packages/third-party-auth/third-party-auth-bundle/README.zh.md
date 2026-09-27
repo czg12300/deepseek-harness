@@ -1,5 +1,5 @@
 ---
-description: "可选三方授权插件的账号连接、模型选择与使用说明。"
+description: "三方授权插件的账号连接、模型选择与使用说明。"
 kind: "package-bundle"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-为 Web Profile 增加可选的 ChatGPT 和 Claude 账号连接。该层挂载授权服务、账号运行时及设置 UI，不修改已有 base、Web bundle 或 preset 文件。此 bundle 仅在当前源码中提供，并非已发布的注册表版本。
+为尚未包含账号功能的自定义 Profile 组合 ChatGPT 和 Claude 账号连接。该层挂载授权服务、账号运行时及设置 UI。默认 Web bundle 已直接包含这些插件。此 bundle 仅在当前源码中提供，并非已发布的注册表版本。
 
 ## 目录
 
@@ -25,12 +25,12 @@ kind: "package-bundle"
 <a id="use-this-package"></a>
 ## 使用此包
 
-入口是包内 `cordis.patch.yml`，作为 Web Profile 的上层配置加载。启动 UI 前先构建工作区，确保所有已有客户端产物可用。注册表安装与 Desktop 加载尚未验证。
+自定义 Profile 的入口是包内 `cordis.patch.yml`。默认 Web Profile 已挂载相同服务，不要重复添加此配置层。启动 UI 前先构建工作区，确保所有已有客户端产物可用。注册表安装与 Desktop 加载尚未验证。
 
-以下是在隔离数据目录中实际启动过的源码验证入口；在仓库根目录执行。
+在仓库根目录执行以下命令，用隔离数据目录启动默认 Web Profile：
 
 ```sh
-DSH_HOME="$PWD/.artifacts/third-party-auth-preview/home" pnpm dsh --profile web --patch packages/third-party-auth/third-party-auth-bundle/cordis.patch.yml --port 0 --no-open
+DSH_HOME="$PWD/.artifacts/third-party-auth-preview/home" pnpm dsh --profile web --port 0 --no-open
 ```
 
 -----

@@ -1,160 +1,163 @@
-## Simple creation
+## Script browser
 
 - region "Comics workspace":
-  - main:
-    - button "Cancel"
-    - paragraph: All projects
-    - heading "Create a new story" [level=1]
-    - paragraph: Start with one idea. Fill in the details later.
-    - group "Choose a starting point":
-      - text: Choose a starting point
-      - radio "Start with an idea" [checked]
-      - text: Start with an idea
-      - radio "Import a script"
-      - text: Import a script
-    - group:
-      - text: One-line concept
-      - textbox "One-line concept":
-        - /placeholder: "For example: A girl who hears plants speak sets out to find a missing forest."
-      - text: 0 / 100 characters
-    - group: More settings (optional)
-    - button "Save creation draft"
-    - button "Create project" [disabled]
-    - group: Draft export and planning assistant
-
-## Saved project
-
-- region "Comics workspace":
-  - navigation "Series planning":
+  - strong: Project folder
+  - text: {{cwd}}/Lighthouse Keepers One project · One folder
+  - button "Show in file manager"
+  - button "Close project"
+  - navigation "Project directory":
+    - paragraph: Comics workspace / All projects
+    - strong: Lighthouse Keepers
     - button "Back to all projects"
     - text: Select project
     - combobox "Select project":
       - option "All projects"
-      - option "Desert Couriers"
       - option "Lighthouse Keepers" [selected]
       - option "New project"
-    - paragraph: Series planning
-    - button "Story outline"
-    - button "Episodes"
-    - paragraph: Shared library
-    - button "Characters and looks" [disabled]
-    - button "Scenes" [disabled]
-    - button "Props" [disabled]
-    - paragraph: Production management
+    - paragraph: Project directory
+    - strong: Story scripts
+    - button "故事大纲.md"
+    - button "人物小传.md"
+    - button "Add episode"
+    - button "Production" [disabled]
+    - text: Finish and confirm the script to unlock production
+    - button "Project assets" [disabled]
+    - text: Available after media is generated or imported
     - button "Awaiting review"
-    - button "Generation tasks" [disabled]
-    - button "Agent configuration"
     - button "Version history"
     - button "Project settings"
   - main:
-    - paragraph: Lighthouse Keepers
-    - heading "Story outline" [level=1]
-    - text: Version 2 Approved Story outline
-    - textbox "Story outline":
-      - /placeholder: Develop the main story, character arcs, and world rules here.
-      - text: Mira repairs the lighthouse before the winter fleet returns.
-    - status: Saved
-    - button "Submit for review" [disabled]
-    - button "Save draft" [disabled]
-    - paragraph: Drafts survive project and page navigation. Save or export before closing or refreshing this page.
-    - button "Export local draft"
+    - paragraph: Story scripts / 故事大纲.md
+    - heading "故事大纲" [level=1]
+    - text: Version 2
+    - article:
+      - paragraph: Markdown document
+      - heading "故事大纲" [level=1]
+      - paragraph: Mira repairs the lighthouse before the winter fleet returns.
+      - text: scripts/故事大纲.md
+      - button "Edit document"
+    - paragraph: Finish and confirm the script to unlock production
+    - button "Confirm script complete" [disabled]
   - complementary "Planning assistant":
     - heading "Planning assistant" [level=2]
     - text: Ready for a request
     - button "Agent configuration"
+    - button "Refresh conversation"
     - paragraph: "Current target: Story outline · Version 2"
-    - text: Workspace version
-    - combobox "Workspace version":
-      - option "Role configuration v1" [selected]
-    - group: Capabilities and tools
-    - group: Protected fields
-    - paragraph: Send a request to receive an explanation or proposal. Navigation does not run a task.
-    - button "Refresh projects"
+    - region "Create the story outline on the left":
+      - strong: Create the story outline on the left
+      - paragraph: Develop the plot, character arcs and ending from your project concept and current draft. Apply the generated outline directly to the editor.
+    - group: Work history and settings
+    - paragraph: Start an outline from the project concept, or describe the plot you want to change. I will provide a complete outline you can apply to the editor.
+    - button "Draft story outline"
+    - button "Develop current outline"
+    - button "Check story logic"
     - textbox "Request for the professional assistant":
-      - /placeholder: Describe the change… (Enter for a new line, Shift + Enter to send)
-    - button "Send" [disabled]
+      - /placeholder: "For example: Draft an outline from the project concept, with a clear character motivation and a twist ending…"
+    - button "Select model, current DeepSeek-V4-Flash":
+      - text: DeepSeek-V4-Flash
+      - img
+    - button "Send message" [disabled]
 
-## Archived project
+## Production canvas
 
 - region "Comics workspace":
-  - navigation "Series planning":
+  - strong: Project folder
+  - text: {{cwd}}/Lighthouse Keepers One project · One folder
+  - button "Show in file manager"
+  - button "Close project"
+  - navigation "Project directory":
+    - paragraph: Comics workspace / All projects
+    - strong: Lighthouse Keepers
     - button "Back to all projects"
     - text: Select project
     - combobox "Select project":
       - option "All projects"
       - option "Lighthouse Keepers" [selected]
-      - option "Desert Couriers"
       - option "New project"
-    - paragraph: Series planning
-    - button "Story outline"
-    - button "Episodes"
-    - paragraph: Shared library
-    - button "Characters and looks" [disabled]
-    - button "Scenes" [disabled]
-    - button "Props" [disabled]
-    - paragraph: Production management
+    - paragraph: Project directory
+    - strong: Story scripts
+    - button "故事大纲.md"
+    - button "人物小传.md"
+    - button "第01集剧本.md"
+    - button "Add episode"
+    - button "Production"
+    - button "Episode 01 production"
+    - button "New production unit"
+    - button "Project assets" [disabled]
+    - text: Available after media is generated or imported
     - button "Awaiting review"
-    - button "Generation tasks" [disabled]
-    - button "Agent configuration"
     - button "Version history"
     - button "Project settings"
   - main:
-    - paragraph: Lighthouse Keepers
-    - heading "Story outline" [level=1]
-    - text: Version 3
-    - status: This project is archived and read-only. Restore it in Project settings to edit.
-    - text: Story outline
-    - textbox "Story outline" [disabled]:
-      - /placeholder: Develop the main story, character arcs, and world rules here.
-      - text: Mira repairs the lighthouse before the winter fleet returns.
-    - status: Saved
-    - button "Submit for review" [disabled]
-    - button "Save draft" [disabled]
-    - paragraph: Drafts survive project and page navigation. Save or export before closing or refreshing this page.
-    - button "Export local draft"
-  - complementary "Planning assistant":
-    - heading "Planning assistant" [level=2]
-    - text: Ready for a request
-    - button "Agent configuration"
-    - paragraph: "Current target: Story outline · Version 3"
-    - text: Workspace version
-    - combobox "Workspace version":
-      - option "Role configuration v1" [selected]
-    - group: Capabilities and tools
-    - group: Protected fields
-    - paragraph: Send a request to receive an explanation or proposal. Navigation does not run a task.
-    - button "Refresh projects"
-    - textbox "Request for the professional assistant" [disabled]:
-      - /placeholder: Describe the change… (Enter for a new line, Shift + Enter to send)
-    - button "Send" [disabled]
+    - paragraph: Production / Episode 01 production
+    - heading "Episode 01 production" [level=1]
+    - button "Add text"
+    - button "Import media"
+    - button "−"
+    - text: 100%
+    - button "+"
+    - article:
+      - text: Script
+      - strong: "Episode 01: The signal"
+      - paragraph: Mira lights the beacon during a storm.
+    - article:
+      - text: Script
+      - strong: Text node
+    - button "←"
+    - button "→"
+    - button "↑"
+    - button "↓"
+    - complementary "Production AI":
+      - strong: Production AI
+      - text: Ready for a request
+      - textbox "Production request":
+        - /placeholder: Describe shots, pacing, or a visual idea…
+      - text: Text advice is available; import media locally.
+      - button "Send" [disabled]
 
-## Human-approved outline
+## Project assets
 
 - region "Comics workspace":
-  - button "Back to workspace"
-  - heading "Content review" [level=1]
-  - paragraph: Approve only the selected version. Content approval does not authorize paid generation.
-  - button "Refresh projects"
-  - navigation "Content review":
-    - text: Review status
-    - combobox "Review status":
-      - option "Pending review" [selected]
-      - option "Approved"
-      - option "Returned"
-      - option "All statuses"
+  - strong: Project folder
+  - text: {{cwd}}/Lighthouse Keepers One project · One folder
+  - button "Show in file manager"
+  - button "Close project"
+  - navigation "Project directory":
+    - paragraph: Comics workspace / All projects
+    - strong: Lighthouse Keepers
+    - button "Back to all projects"
+    - text: Select project
+    - combobox "Select project":
+      - option "All projects"
+      - option "Lighthouse Keepers" [selected]
+      - option "New project"
+    - paragraph: Project directory
+    - strong: Story scripts
+    - button "故事大纲.md"
+    - button "人物小传.md"
+    - button "第01集剧本.md"
+    - button "Add episode"
+    - button "Production"
+    - button "Episode 01 production"
+    - button "New production unit"
+    - button "Project assets"
+    - text: 1 assets
+    - button "Awaiting review"
+    - button "Version history"
+    - button "Project settings"
   - main:
-    - heading "Lighthouse Keepers" [level=2]
-    - text: Approved
-    - heading "Submitted version · Version 2" [level=3]
-    - text: Mira repairs the lighthouse before the winter fleet returns.
-    - heading "Previously approved version" [level=3]
-    - paragraph: No previously approved version.
-    - text: Review comment
-    - textbox "Review comment" [disabled]: Ready for storyboard planning.
-    - paragraph: Approve only the selected version. Content approval does not authorize paid generation.
-    - button "Return for revision" [disabled]
-    - button "Approve this version" [disabled]
-  - complementary:
-    - heading "Continuity reviewer" [level=2]
-    - paragraph: Its production capability is not available yet
-    - paragraph: Approve only the selected version. Content approval does not authorize paid generation.
+    - paragraph: Comics workspace / Project assets
+    - heading "Project assets" [level=1]
+    - text: 1 assets
+    - button "Refresh projects"
+    - group "Asset type":
+      - button "All assets"
+      - button "Images"
+      - button "Videos"
+      - button "Audio"
+      - textbox "Search assets"
+    - button "Images beacon.png 0.0 MiB":
+      - text: Images
+      - strong: beacon.png
+      - paragraph: 0.0 MiB

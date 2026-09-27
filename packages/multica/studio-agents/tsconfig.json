@@ -55,6 +55,9 @@
     },
     {
       "path": "../../util/home-paths"
+    },
+    {
+      "path": "../../session/session-format-catalog"
     }
   ]
 }

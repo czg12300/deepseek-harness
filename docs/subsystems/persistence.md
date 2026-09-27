@@ -6,6 +6,8 @@ The **durability seam** for the event log. [session.md](session.md) describes th
 
 The seam is a [capability seam](../../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md): one abstract service ([dsh-session-persistence](../../packages/session/session-persistence), `ctx.sessionPersistence`) exposing `create`/`open`/`stat`/`list` over the existing `SessionEvent` — **no parallel persisted event type** — where `create` and `open` return a per-session `SessionHandle` (`read`/`append`/`flush`/`close`) that carries all log access and single-writer ownership. The repository ships [dsh-session-persistence-jsonl](../../packages/session/session-persistence-jsonl) as its provider; out-of-tree providers may implement the same service contract. See the [handle-based persistence Agent Note](../../.agents/notes/implemented/architecture/2026-08-27-handle-based-session-persistence.md) and the [session-persistence Agent Note](../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.md).
 
+`SessionPersistenceStore` pairs an `owns(SessionId)` predicate with the standard persistence operations. Providers supporting `registerStore()` route those identities to the mounted project store and include it in list and flush. The owner retains registration until its handles close; unsupported providers refuse registration.
+
 ## `SessionHandle` — one open channel onto a stored session
 
 Every log read and write flows through a handle, never through id-addressed service methods: the handle is the single door the cross-process write lease guards. A read returns a caller-owned outer slice and the producer-established aliasing state of its event values. One handle type serves both accesses — a mutation on a `read` handle is a runtime `SessionReadOnlyError` rather than a typed split — and in-process single-writer ownership makes a second `open(id, 'write')` reject with `SessionAlreadyOwnedError` while an owner is active.
@@ -349,6 +351,14 @@ Visibility: a created session is observable through `stat`/`list`/`open` in this
 Freshness: once an `append` or `flush` resolves, reads started afterwards on this backend instance observe at least that prefix.
 
 ```ts cordis-catalog
+/**
+ * Route explicitly owned sessions to a mounted project store. Backends without
+ * routing support reject; callers must keep the registration until handles close.
+ * @param store - project-owned persistence and identity predicate.
+ * @returns disposer removing the route after its owner has drained sessions.
+ */
+registerStore(store: SessionPersistenceStore): () => Promise<void>
+
 /**
  * Create a new stored session and take its write ownership.
  * @param header - the immutable header (id, version, cwd, lineage) to store.

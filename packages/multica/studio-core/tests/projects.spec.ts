@@ -390,6 +390,10 @@ describe('Multica immutable project storage', () => {
     const projects = ctx.studioProjects
     expect(projects.typertRemote).toMatchObject({ serviceKey: 'studioProjects', namespace: 'studioProjects' })
     expect(remoteMethods(projects).map(method => method.method)).toEqual([
+      'actorLibraries', 'createActorLibrary', 'libraryActors', 'libraryActor', 'saveLibraryActor', 'exportActorLibrary', 'importActorLibrary',
+      'scriptDocuments', 'scriptDocument', 'saveScriptDocument', 'scriptComplete', 'completeScript', 'productionUnits',
+      'createProductionUnit', 'canvasNodes', 'addCanvasNode', 'moveCanvasNode', 'projectMedia', 'importProjectMedia', 'projectMediaData',
+      'projectFolders', 'openFolder', 'prepareFolder', 'closeFolder', 'forgetFolder', 'revealFolder', 'migrateProject', 'backupFolder', 'saveEditorDraft', 'editorDraft',
       'list',
       'coverUploadLimit',
       'setCover',

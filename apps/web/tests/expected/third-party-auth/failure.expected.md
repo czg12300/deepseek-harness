@@ -1,0 +1,1 @@
+- status: Authorization or credential storage failed. Check the server proxy connection and sign in again; the browser success page does not confirm that credentials were saved.

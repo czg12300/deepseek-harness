@@ -6,7 +6,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** Physical Multica database generation, stored in PRAGMA user_version. */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 5
 
 const APPLICATION_ID = 0x4d554c54
 
@@ -30,7 +30,7 @@ export function transaction<T>(db: DatabaseSync, operation: () => T): T {
 
 /**
  * Open an owner-only database and initialize only an empty, unstamped file.
- * @param path - Resolved file inside the configured Harness home.
+ * @param path - Absolute project or device database filename.
  * @param busyTimeoutMs - Validated SQLite lock-wait budget in milliseconds.
  * @returns A ready connection; initialization failures close it before throwing.
  */
@@ -51,7 +51,7 @@ export function openDatabase(path: string, busyTimeoutMs: number): DatabaseSync 
     db.exec('PRAGMA foreign_keys = ON')
     const priorVersion = db.prepare('PRAGMA user_version').get()?.user_version
     const priorApplication = db.prepare('PRAGMA application_id').get()?.application_id
-    if ((priorVersion === 1 || priorVersion === 2) && priorApplication === APPLICATION_ID) {
+    if ((priorVersion === 1 || priorVersion === 2 || priorVersion === 3 || priorVersion === 4) && priorApplication === APPLICATION_ID) {
       const backup = `${path}.pre-migration-${randomUUID()}.sqlite`
       closeSync(openSync(backup, 'wx', 0o600))
       db.prepare('VACUUM INTO ?').run(backup)
@@ -84,7 +84,8 @@ export function openDatabase(path: string, busyTimeoutMs: number): DatabaseSync 
           PRAGMA application_id = ${APPLICATION_ID};
           PRAGMA user_version = 1;
         `)
-      } else if ((version !== 1 && version !== 2 && version !== SCHEMA_VERSION) || application !== APPLICATION_ID) {
+      } else if ((version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== SCHEMA_VERSION)
+        || application !== APPLICATION_ID) {
         throw new Error(`Unsupported Multica database identity or schema version at ${path}: ${String(version)}`)
       }
       if (db.prepare('PRAGMA user_version').get()?.user_version === 1) {
@@ -117,9 +118,56 @@ export function openDatabase(path: string, busyTimeoutMs: number): DatabaseSync 
             revision INTEGER NOT NULL CHECK(revision > 0),
             image TEXT
           ) STRICT;
+          PRAGMA user_version = 3;
+        `)
+      }
+      if (db.prepare('PRAGMA user_version').get()?.user_version === 3) {
+        db.exec(`
+          CREATE TABLE studio_locations (id TEXT PRIMARY KEY, document TEXT NOT NULL CHECK(json_valid(document)), hidden INTEGER NOT NULL DEFAULT 0 CHECK(hidden IN (0, 1))) STRICT;
+          CREATE TABLE studio_project_identity (slot INTEGER PRIMARY KEY CHECK(slot = 1), id TEXT NOT NULL UNIQUE) STRICT;
+          CREATE TABLE studio_edit_drafts (project_id TEXT PRIMARY KEY, base_revision INTEGER NOT NULL, document TEXT NOT NULL CHECK(json_valid(document))) STRICT;
+          PRAGMA user_version = 4;
+        `)
+      }
+      if (db.prepare('PRAGMA user_version').get()?.user_version === 4) {
+        db.exec(`
+          CREATE TABLE studio_script_documents (
+            id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
+            kind TEXT NOT NULL CHECK(kind IN ('outline', 'characters', 'episode')),
+            episode_id TEXT, title TEXT NOT NULL, relative_path TEXT NOT NULL,
+            markdown TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+            UNIQUE(project_id, relative_path)
+          ) STRICT;
+          CREATE TABLE studio_script_completion (
+            project_id TEXT PRIMARY KEY REFERENCES projects(id), digest TEXT NOT NULL,
+            confirmed_at TEXT NOT NULL
+          ) STRICT;
+          CREATE TABLE studio_production_units (
+            id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
+            kind TEXT NOT NULL CHECK(kind IN ('episode', 'whole')),
+            episode_id TEXT, title TEXT NOT NULL, created_at TEXT NOT NULL
+          ) STRICT;
+          CREATE TABLE studio_canvas_nodes (
+            id TEXT PRIMARY KEY, unit_id TEXT NOT NULL REFERENCES studio_production_units(id),
+            kind TEXT NOT NULL CHECK(kind IN ('script', 'image', 'video', 'audio')),
+            label TEXT NOT NULL, text TEXT, x REAL NOT NULL, y REAL NOT NULL,
+            asset_id TEXT, revision INTEGER NOT NULL CHECK(revision > 0)
+          ) STRICT;
+          CREATE TABLE studio_media_assets (
+            id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
+            unit_id TEXT NOT NULL REFERENCES studio_production_units(id),
+            kind TEXT NOT NULL CHECK(kind IN ('image', 'video', 'audio')),
+            name TEXT NOT NULL, mime TEXT NOT NULL, relative_path TEXT NOT NULL,
+            byte_size INTEGER NOT NULL CHECK(byte_size > 0), created_at TEXT NOT NULL
+          ) STRICT;
           PRAGMA user_version = ${SCHEMA_VERSION};
         `)
       }
+      db.prepare('SELECT id, relative_path, markdown FROM studio_script_documents LIMIT 0').all()
+      db.prepare('SELECT project_id, digest FROM studio_script_completion LIMIT 0').all()
+      db.prepare('SELECT id, episode_id FROM studio_production_units LIMIT 0').all()
+      db.prepare('SELECT id, revision FROM studio_canvas_nodes LIMIT 0').all()
+      db.prepare('SELECT id, relative_path FROM studio_media_assets LIMIT 0').all()
       db.prepare('SELECT project_id, revision, image FROM project_covers LIMIT 0').all()
       db.prepare('SELECT id, binding_key, session_id, document FROM studio_workspaces LIMIT 0').all()
       db.prepare('SELECT id, workspace_id, request_id, owner_pid, state, document FROM studio_tasks LIMIT 0').all()

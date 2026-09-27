@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -49,6 +49,31 @@ const input: ProjectInput = {
 }
 
 describe('Multica SQLite configuration and failure recovery', () => {
+  it('migrates a version 4 project database beside an unchanged backup', async () => {
+    const home = await root()
+    const path = join(home, 'multica/studio.sqlite')
+    const first = service({ dshHome: home }).create(input)
+    const originalContext = contexts.at(-1)
+    if (!originalContext) throw new Error('Missing project context')
+    await originalContext.fiber.dispose()
+    const old = new DatabaseSync(path)
+    old.exec(`PRAGMA foreign_keys = OFF;
+      DROP TABLE studio_media_assets;
+      DROP TABLE studio_canvas_nodes;
+      DROP TABLE studio_production_units;
+      DROP TABLE studio_script_completion;
+      DROP TABLE studio_script_documents;
+      PRAGMA user_version = 4;`)
+    old.close()
+    const reopened = service({ dshHome: home })
+    expect(reopened.get(first.id)).toEqual(first)
+    const db = connect(path)
+    expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(SCHEMA_VERSION)
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'studio_production_units'").get()?.name)
+      .toBe('studio_production_units')
+    expect((await readdir(join(home, 'multica'))).some(name => name.includes('pre-migration-'))).toBe(true)
+  })
+
   it('resolves database files inside explicit home and does not create target episodes', async () => {
     const home = await root()
     const projects = service({ dshHome: home, databasePath: 'custom/projects.sqlite', busyTimeoutMs: 0 })

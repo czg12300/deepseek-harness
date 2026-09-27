@@ -25,7 +25,7 @@ kind: "package-bundle"
 <a id="use-this-package"></a>
 ## 使用本包
 
-左侧栏的[漫剧工作台](../../client/ui-multica/README.zh.md)用于管理 Multica 项目和手工草稿。创建和编辑项目不会发起模型调用。
+默认配置包含设置页的[三方授权](../../third-party-auth/client-ui-third-party-auth/README.zh.md)和左侧栏的[漫剧工作台](../../client/ui-multica/README.zh.md)，无需额外 patch。连接账号需要用户主动登录。创建和编辑项目不会发起模型调用。
 
 左侧栏的[小说工作区](../../client/ui-novel/README.zh.md)管理独立目录中的作品，支持文档编辑与人工应用 Agent 建议。
 

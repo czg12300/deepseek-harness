@@ -54,6 +54,8 @@ describe('web e2e: settings modal and General preferences', () => {
 
   it('opens the settings dialog, switches sections, and closes by every path', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-settings-shell'))
+    await page.getByRole('navigation', { name: '全局面板' })
+      .getByRole('button', { name: '漫剧', exact: true }).waitFor()
     const trigger = page.getByRole('button', { name: '设置', exact: true })
     expect(await trigger.getAttribute('aria-haspopup')).toBe('dialog')
     expect(await trigger.getAttribute('aria-expanded')).toBe('false')
@@ -93,6 +95,9 @@ describe('web e2e: settings modal and General preferences', () => {
     // Golden of the freshly opened dialog (default zh, General active).
     const snapshot = await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(DIALOG_EXPECTED, snapshot, MODE)
+    await dialog.getByRole('button', { name: '三方授权', exact: true }).click()
+    await dialog.getByRole('button', { name: '使用 ChatGPT 登录', exact: true }).waitFor()
+    await dialog.getByRole('button', { name: '连接 Claude Code', exact: true }).waitFor()
     // Section switch: aria-current moves (the Models page itself has its own scenario file).
     await dialog.getByRole('button', { name: '模型' }).click()
     await expect.poll(() => dialog.getByRole('button', { name: '模型' }).getAttribute('aria-current'), { timeout: 5_000 }).toBe('true')

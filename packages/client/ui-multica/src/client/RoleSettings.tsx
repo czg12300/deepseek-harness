@@ -117,7 +117,7 @@ export function RoleSettings({ state, studio, studioActions, actions, t }: RoleP
                 />
                 {t('inheritModel')}
               </label>
-              {studio.catalog?.defaultModel && <p>{t('defaultModel', studio.catalog.defaultModel)}</p>}
+              {studio.catalog?.defaultModel && <p>{t('defaultModel', { ...studio.catalog.defaultModel })}</p>}
               {config.provider !== null && (
                 <div className={css.columns}>
                   <label className={css.field}>

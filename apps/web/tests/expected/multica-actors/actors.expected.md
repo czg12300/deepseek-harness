@@ -1,0 +1,23 @@
+- region "Comics workspace":
+  - paragraph: Comics workspace
+  - tablist "Comics catalogs":
+    - tab "All projects"
+    - tab "Actor library" [selected]
+  - paragraph: Keep characters and appearance references in independent libraries.
+  - button "New library"
+  - button "Import as new"
+  - button "Import and merge"
+  - button "Export library"
+  - button "Choose actor-library ZIP"
+  - tabpanel "Actor library":
+    - text: Current library
+    - combobox "Current library":
+      - option "Guest cast · 1" [selected]
+      - option "Main cast · 1"
+    - textbox "Search actors"
+    - textbox "Period"
+    - textbox "Region"
+    - button "Add actor"
+    - status: "Import complete: 1 added, 0 skipped, 0 conflict copies."
+    - status: 1 actors
+    - button "Mira": Mira Modern · Coast

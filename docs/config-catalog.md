@@ -2016,7 +2016,7 @@ export interface Config {
 export type JsonlCompression = 'zstd' | 'none'
 ```
 
-Source: [`packages/session/session-persistence-jsonl/src/index.ts:88`](../packages/session/session-persistence-jsonl/src/index.ts)
+Source: [`packages/session/session-persistence-jsonl/src/index.ts:89`](../packages/session/session-persistence-jsonl/src/index.ts)
 
 <a id="deepseek-aidsh-session-projection-cache"></a>
 
@@ -2440,7 +2440,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/multica/studio-agents/src/index.ts:32`](../packages/multica/studio-agents/src/index.ts)
+Source: [`packages/multica/studio-agents/src/index.ts:43`](../packages/multica/studio-agents/src/index.ts)
 
 <a id="deepseek-aidsh-studio-core"></a>
 
@@ -2469,7 +2469,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/multica/studio-core/src/index.ts:56`](../packages/multica/studio-core/src/index.ts)
+Source: [`packages/multica/studio-core/src/index.ts:55`](../packages/multica/studio-core/src/index.ts)
 
 <a id="deepseek-aidsh-subagent-acp"></a>
 

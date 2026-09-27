@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import { ThirdPartyAuth } from '../src/service.ts'
 import type { AccountProvider, ConnectEvent } from '../src/types.ts'
@@ -54,7 +54,7 @@ describe('account connection lifecycle', () => {
   it('keeps a successful native authorization disconnected when route activation fails', async () => {
     const { service } = await setup({ activate: async () => { throw new Error('secret failure payload') } })
     const result = await drain(service.connect('chatgpt', new AbortController().signal))
-    expect(result.at(-1)).toEqual({ kind: 'settled', status: 'failed' })
+    expect(result.at(-1)).toEqual({ kind: 'settled', status: 'failed', reason: 'activation' })
     expect(JSON.stringify(result)).not.toContain('secret')
     expect(service.preferences.get().accounts.chatgpt).toBeUndefined()
   })
@@ -72,6 +72,27 @@ describe('account connection lifecycle', () => {
     expect((await drain(stream)).at(-1)).toEqual({ kind: 'settled', status: 'cancelled' })
     expect(activated).toBe(false)
     expect(service.preferences.get().accounts.chatgpt).toBeUndefined()
+  })
+
+  it('reports authorization failure without exposing upstream response text', async () => {
+    const { service } = await setup({ connect: async () => { throw new Error('private-token-response') } })
+    const events = await drain(service.connect('chatgpt', new AbortController().signal))
+    expect(events.at(-1)).toEqual({ kind: 'settled', status: 'failed', reason: 'authorization' })
+    expect(JSON.stringify(events)).not.toContain('private-token-response')
+  })
+
+  it('distinguishes the login deadline from user cancellation', async () => {
+    const { service } = await setup({ connect: interaction => new Promise((resolve) => {
+      interaction.signal.addEventListener('abort', () => { resolve(false) }, { once: true })
+    }) })
+    vi.useFakeTimers()
+    try {
+      const stream = service.connect('chatgpt', new AbortController().signal)
+      await stream[Symbol.asyncIterator]().next()
+      const result = drain(stream)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect((await result).at(-1)).toEqual({ kind: 'settled', status: 'failed', reason: 'timeout' })
+    } finally { vi.useRealTimers() }
   })
 
   it('refuses a second login while the first owns the provider', async () => {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, globSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rename, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -13,10 +13,10 @@ import AgentPresets from '@deepseek-ai/dsh-agent-presets'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import * as Persona from '@deepseek-ai/dsh-persona'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import StudioProjects from '@deepseek-ai/dsh-studio-core'
-import type { ProjectInput, StudioRequestId, StudioTaskId, StudioTask } from '@deepseek-ai/dsh-studio-core/types'
+import type { ProjectInput, StudioRequestId, StudioTaskId, StudioTask, StudioCreationId } from '@deepseek-ai/dsh-studio-core/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MockAdapter, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import StudioAgents from '../src/index.ts'
@@ -94,6 +94,73 @@ function proposed(text = 'A focused new outline') {
 }
 
 describe('professional Sessions through Loader and the real loop', () => {
+  it('moves an unpublished legacy form and its planner dialogue into a portable folder', async () => {
+    const reply = () => toolCallResponse('proposal', 'structured_output', { reply: 'Draft context retained.', changes: [] })
+    const f = await setup([reply(), reply()])
+    const id = randomUUID() as StudioCreationId
+    f.projects.saveCreationDraft(id, null, input())
+    const view = f.projects.openWorkspace({ kind: 'creation', draftId: id })
+    const first = await f.projects.startAssistant({ workspaceId: view.workspace.id, requestId: randomUUID() as StudioRequestId,
+      expectedRevision: 1, input: input(), prompt: 'Keep this unpublished draft.' })
+    expect((await f.projects.waitTask(first.id)).status).toBe('completed')
+    const folder = await f.projects.prepareFolder(join(f.home, 'portable-draft'), id, input())
+    expect(folder.projectId).toBeNull()
+    expect(f.projects.creationDrafts()).toHaveLength(1)
+    const second = await f.projects.startAssistant({ workspaceId: view.workspace.id, requestId: randomUUID() as StudioRequestId,
+      expectedRevision: 1, input: input(), prompt: 'Continue planning from the folder.' })
+    const result = await f.projects.waitTask(second.id)
+    expect(result.status, result.error ?? '').toBe('completed')
+    expect(JSON.stringify(f.adapter.requests.at(-1)?.messages)).toContain('Keep this unpublished draft.')
+    await f.projects.closeFolder(folder.id)
+    expect(f.projects.creationDrafts()).toEqual([])
+    f.projects.openFolder(folder.path)
+    expect(f.projects.workspace(view.workspace.id).tasks).toHaveLength(2)
+  })
+  it('migrates a legacy conversation and continues through the folder route in the same process', async () => {
+    const f = await setup([proposed('Legacy draft'), proposed('Portable continuation')])
+    const project = f.projects.create(input())
+    const view = f.projects.openWorkspace({ kind: 'outline', projectId: project.id })
+    const first = await f.projects.startAssistant({ workspaceId: view.workspace.id, requestId: randomUUID() as StudioRequestId,
+      expectedRevision: 1, input: input(), prompt: 'Start in legacy storage.' })
+    expect((await f.projects.waitTask(first.id)).status).toBe('completed')
+    const folder = await f.projects.migrateProject(project.id, join(f.home, 'migrated-project'))
+    const second = await f.projects.startAssistant({ workspaceId: view.workspace.id, requestId: randomUUID() as StudioRequestId,
+      expectedRevision: 1, input: input(), prompt: 'Continue in the portable project.' })
+    const result = await f.projects.waitTask(second.id)
+    expect(result.status, result.error ?? '').toBe('completed')
+    expect(JSON.stringify(f.adapter.requests.at(-1)?.messages)).toContain('Start in legacy storage.')
+    await f.projects.closeFolder(folder.id)
+    expect(() => f.projects.openWorkspace({ kind: 'outline', projectId: project.id })).toThrow('closed')
+    f.projects.openFolder(folder.path)
+    expect(f.projects.workspace(view.workspace.id).tasks).toHaveLength(2)
+  })
+  it('continues the same conversation after copying only the project folder to a fresh device home', async () => {
+    const a = await setup([proposed('Written on device A')])
+    const creation = randomUUID() as StudioCreationId
+    const folder = await a.projects.prepareFolder(join(a.home, 'portable'), creation, input())
+    const project = a.projects.createFromDraft(creation, 1, input())
+    const view = a.projects.openWorkspace({ kind: 'outline', projectId: project.id })
+    const first = await a.projects.startAssistant({ workspaceId: view.workspace.id, requestId: randomUUID() as StudioRequestId, expectedRevision: 1, input: input(), prompt: 'Remember the lighthouse on device A.' })
+    expect((await a.projects.waitTask(first.id)).status).toBe('completed')
+    expect(await a.ctx.sessionPersistence.stat(view.workspace.sessionId)).toBeDefined()
+    expect((await a.ctx.sessionPersistence.stat(view.workspace.sessionId))?.header.cwd).toBeUndefined()
+    await a.projects.closeFolder(folder.id)
+    const b = await setup([proposed('Continued on device B')])
+    const destination = join(b.home, 'renamed-project')
+    await cp(folder.path, destination, { recursive: true })
+    await rename(folder.path, join(a.home, 'disconnected-original'))
+    b.projects.openFolder(destination)
+    const restored = b.projects.openWorkspace({ kind: 'outline', projectId: project.id })
+    expect(restored.workspace.sessionId).toBe(view.workspace.sessionId)
+    expect(restored.tasks[0]?.reply).toContain('suggested change')
+    const second = await b.projects.startAssistant({ workspaceId: restored.workspace.id, requestId: randomUUID() as StudioRequestId, expectedRevision: 1, input: input(), prompt: 'Continue that discussion on device B.' })
+    const result = await b.projects.waitTask(second.id)
+    expect(result.status, result.error ?? '').toBe('completed')
+    expect(JSON.stringify(b.adapter.requests[0]?.messages)).toContain('Remember the lighthouse on device A.')
+    expect(JSON.stringify(b.adapter.requests[0]?.messages)).toContain('Written on device A')
+    expect(b.projects.workspace(view.workspace.id).tasks).toHaveLength(2)
+    await b.projects.closeFolder(folder.id)
+  })
   it('logs the frozen context and real structured result while leaving content for human application and approval', async () => {
     const { ctx, adapter, home, projects } = await setup([proposed()])
     const forbidden = vi.fn(async () => ({}))
@@ -122,6 +189,10 @@ describe('professional Sessions through Loader and the real loop', () => {
     expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('Original outline')
     expect(JSON.stringify(adapter.requests[0]?.messages)).toContain(task.id)
     expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('Develop comic-series concepts')
+    expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('Your primary task is to help the creator write and revise the current project story outline.')
+    expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('including unsaved edits')
+    expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('complete usable outline')
+    expect(JSON.stringify(adapter.requests[0]?.messages)).toContain('For analysis-only requests or greetings, answer in reply and leave changes empty.')
     expect(forbidden).not.toHaveBeenCalled()
     expect(projects.get(project.id)).toEqual(project)
     const proposal = projects.workspace(workspace.workspace.id).proposals[0]!
@@ -139,6 +210,52 @@ describe('professional Sessions through Loader and the real loop', () => {
     expect(log).toContain('Original outline')
     expect(log).toContain('A focused new outline')
     expect(log).toContain('structured_output')
+  })
+
+  it('applies each task model and effort to the request while retaining its original Session and idempotency', async () => {
+    const { adapter, projects, ctx } = await setup([proposed(), proposed(), proposed()])
+    vi.spyOn(adapter, 'resolveModel').mockImplementation(async (provider, model) => ({
+      provider, id: model, name: model,
+      ...(model === 'reasoner' ? { reasoning: { efforts: [
+        { id: ReasoningEffortId('high'), name: 'High' },
+        { id: ReasoningEffortId('low'), name: 'Low' },
+      ] } } : {}),
+    }))
+    const headers: unknown[] = []
+    ctx.on('session/event', (_session, event) => { if (event.type === 'request/header') headers.push(event.data) })
+    const project = projects.create(input())
+    const workspace = projects.openWorkspace({ kind: 'outline', projectId: project.id })
+    const request = {
+      workspaceId: workspace.workspace.id,
+      requestId: randomUUID() as StudioRequestId,
+      expectedRevision: 1,
+      input: input(),
+      prompt: 'Suggest an outline.',
+      modelSelection: { provider: 'mock', model: 'reasoner', reasoningEffort: 'high' },
+    }
+    await expect(projects.startAssistant({
+      ...request, modelSelection: { provider: 'mock', model: 'fast', reasoningEffort: 'high' },
+    })).rejects.toThrow('does not support reasoning effort')
+    const first = await projects.startAssistant(request)
+    expect((await projects.waitTask(first.id)).status).toBe('completed')
+    expect(adapter.requests[0]).toMatchObject({ model: 'reasoner', reasoningEffort: 'high' })
+    expect(projects.workspace(workspace.workspace.id).tasks[0]?.reasoningEffort).toBe('high')
+    expect((await projects.startAssistant(request)).id).toBe(first.id)
+    await expect(projects.startAssistant({ ...request, modelSelection: { ...request.modelSelection, reasoningEffort: 'low' } })).rejects.toThrow('reused')
+    const second = await projects.startAssistant({
+      ...request, requestId: randomUUID() as StudioRequestId,
+      modelSelection: { provider: 'mock', model: 'fast' },
+    })
+    expect((await projects.waitTask(second.id)).status).toBe('completed')
+    expect(second.sessionId).toBe(first.sessionId)
+    expect(adapter.requests[1]?.model).toBe('fast')
+    expect(adapter.requests[1]?.reasoningEffort).toBeUndefined()
+    const third = await projects.startAssistant({ ...request, requestId: randomUUID() as StudioRequestId })
+    expect((await projects.waitTask(third.id)).status).toBe('completed')
+    expect(adapter.requests[2]).toMatchObject({ model: 'reasoner', reasoningEffort: 'high' })
+    expect(JSON.stringify(headers)).toContain('reasoner')
+    expect(JSON.stringify(headers)).toContain('fast')
+    expect(projects.workspace(workspace.workspace.id).tasks.map(task => task.model)).toEqual(['reasoner', 'fast', 'reasoner'])
   })
 
   it('rejects unscoped chat input on a bound professional Session and blocks inherited tools even when requested', async () => {

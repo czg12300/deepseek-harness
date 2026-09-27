@@ -31,6 +31,8 @@ import type { EnterBehaviorRowInjected } from './settings/EnterBehaviorRow.tsx'
 import { ConversationRoot } from './skeleton/ConversationRoot.tsx'
 import { ConversationPanel } from './skeleton/ConversationPanel.tsx'
 import { ConversationSession, ConversationSessionHeader } from './skeleton/ConversationSession.tsx'
+import { PromptComposer } from './skeleton/PromptComposer.tsx'
+import type {} from '@deepseek-ai/dsh-client-ui-multica/client'
 import { InputBar } from './skeleton/InputBar.tsx'
 import { todoDockEntry } from './skeleton/TodoPanel.tsx'
 import { resolveActiveView } from './view-selection.ts'
@@ -135,6 +137,11 @@ export function apply(ctx: Context, config: Config = Config({})): void {
   const uiConversation = new UiConversation(ctx, sessions)
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-conversation: dictionaries')
+  ctx.slots.inject('multica.assistant.composer', () => ctx.slots.register({
+    name: 'multica.assistant.composer',
+    locale: NS,
+    children: { 'multica.assistant.composer.model': { kind: 'single', scope: 'root' } },
+  }, PromptComposer))
   const t = ctx.locale.bind(NS)
   const conversationStore = createConversationStore()
   const submissionPolicy = new ComposerSubmissionPolicy(

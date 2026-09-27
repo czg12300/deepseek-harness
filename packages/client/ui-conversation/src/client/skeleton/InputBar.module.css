@@ -123,7 +123,7 @@
    contenteditable grows with its content inside; the 14-line cap lives here
    because this is the box the cap describes. */
 .scroll {
-  max-height: var(--dsh-composer-text-max-height);
+  max-height: var(--dsh-composer-text-max-height, 336px);
   overflow-y: auto;
   /* Keeps the bar off the card's right border; .input's right pad gives the
      4px back so the text column is unchanged. */
@@ -391,4 +391,16 @@
   color: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* Controlled authoring text keeps the main card's typography and spacing. */
+.promptInput.promptInput {
+  display: block;
+  width: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  padding: 4px 8px 0 14px;
 }

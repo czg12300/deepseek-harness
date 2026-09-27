@@ -7,6 +7,9 @@
     - button "Models":
       - img
       - text: Models
+    - button "Third-party authorization":
+      - img
+      - text: Third-party authorization
     - button "Plugins":
       - img
       - text: Plugins

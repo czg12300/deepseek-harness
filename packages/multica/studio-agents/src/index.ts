@@ -1,16 +1,18 @@
 /** Professional Agent execution over frozen project workspaces and ordinary durable Session messages. */
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { ProjectSessions } from './project-sessions.ts'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-session-persistence'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-skill'
 import type {} from '@deepseek-ai/dsh-studio-core'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { MessageId } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { LlmCallConfig, MessageId } from '@deepseek-ai/dsh-llm'
 import { createScope, scopeOf, type Scope } from '@deepseek-ai/dsh-scope'
 import { PERSONA_PREFIX_SECTION } from '@deepseek-ai/dsh-system-prompt'
 import { attachStructuredRuntime, STRUCTURED_OUTPUT_TOOL, STRUCTURED_OUTPUT_INSTRUCTION } from '@deepseek-ai/dsh-subagent-in-process-driver'
@@ -27,6 +29,15 @@ import type {
   StudioTask,
   StudioTaskId,
 } from '@deepseek-ai/dsh-studio-core/types'
+
+function modelCall(selection: Pick<StudioResolvedRole, 'provider' | 'model' | 'reasoningEffort'>, maxTokens: number): LlmCallConfig {
+  return {
+    provider: selection.provider,
+    model: selection.model,
+    maxTokens,
+    ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(selection.reasoningEffort) }),
+  }
+}
 
 /** Deployment storage for local Session working directories. */
 export interface Config {
@@ -94,6 +105,7 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
   private readonly bySession = new Map<string, ActiveTask>()
   private readonly contextTools = new Map<string, StudioContextTool>()
   private closing = false
+  private readonly projectStores = new Map<string, { store: ProjectSessions; remove: () => Promise<void> }>()
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'studioAgents')
@@ -125,9 +137,12 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     ctx.effect(() =>
       ctx.studioProjects.registerAssistantBackend({
         catalog: () => this.catalog(),
-        resolve: role => this.resolve(role),
+        resolve: (role, selection) => this.resolve(role, selection),
         execute: task => this.execute(task),
         cancel: id => this.cancel(id),
+        closeProject: root => this.closeProject(root),
+        openProject: (root, check) =>{  this.openProject(root, check) },
+        copySessions: (ids, root, check) => this.copySessions(ids, root, check),
       }),
     )
     ctx.effect(() => async () => {
@@ -136,6 +151,8 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
       await Promise.allSettled([...this.handles.values()].map(handle => handle.dispose()))
       await Promise.allSettled([...this.policies.keys()].map(agent => this.disposePolicy(agent)))
       await Promise.allSettled([...this.draining])
+      for (const mounted of this.projectStores.values()) { await mounted.store.close(); await mounted.remove() }
+      this.projectStores.clear()
     })
   }
 
@@ -163,7 +180,7 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     return {
       backendAvailable: !this.closing,
       enabledRoles: [...ENABLED_ROLES],
-      defaultModel: { provider: selected.provider, model: selected.model },
+      defaultModel: { ...selected },
       skills: skills
         .filter(skill => skill.invocation.userInvocable)
         .map(skill => ({ name: skill.name, description: skill.description })),
@@ -171,19 +188,21 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     }
   }
 
-  /** Resolve model and dependency content once, before its workspace begins execution.
+  /** Resolve a task model and selected dependency content before admission.
    * @param role - immutable, validated role configuration.
+   * @param selection - explicit task model selection, overriding the role default.
    * @returns the effective model and selected skill bodies/tool identities.
    */
-  async resolve(role: StudioRoleRevision): Promise<StudioResolvedRole> {
+  async resolve(role: StudioRoleRevision, selection?: Pick<StudioResolvedRole, 'provider' | 'model' | 'reasoningEffort'>): Promise<StudioResolvedRole> {
     if (this.closing) throw new Error('Professional execution is stopping')
-    let selected: { provider: string; model: string }
-    if (role.config.provider === null) selected = this.ctx.agentDefaultModel.currentSelection()
+    let selected: Pick<StudioResolvedRole, 'provider' | 'model' | 'reasoningEffort'>
+    if (selection) selected = selection
+    else if (role.config.provider === null) selected = this.ctx.agentDefaultModel.currentSelection()
     else {
       if (role.config.model === null) throw new Error('Select both provider and model in the professional configuration')
       selected = { provider: role.config.provider, model: role.config.model }
     }
-    await this.ctx.llm.prepareCall({ provider: selected.provider, model: selected.model, maxTokens: role.config.maxTokens })
+    await this.ctx.llm.prepareCall(modelCall(selected, role.config.maxTokens))
     const skills = []
     for (const name of role.config.skills) {
       const skill = await this.ctx.skills.get(name, { cwd: this.directory })
@@ -192,7 +211,7 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     }
     for (const name of role.config.tools)
       if (!this.contextTools.has(name)) throw new Error(`No controlled read-only tool is registered for ${name}`)
-    return { provider: selected.provider, model: selected.model, skills, tools: [...role.config.tools] }
+    return { ...selected, skills, tools: [...role.config.tools] }
   }
 
   /** Drive exactly one explicit task, retaining Session history while task-local tools are disposed.
@@ -311,7 +330,7 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
       name: PERSONA_PREFIX_SECTION,
       order: scope.ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX'),
       complete: true,
-      text: `${workspace.role.config.persona}\n\nWork only on the frozen target in the supplied task. Never approve content, apply project edits, or authorize paid production.\n${STRUCTURED_OUTPUT_INSTRUCTION}`,
+      text: `${workspace.role.config.persona}\n\n${workspace.target.kind === 'outline' ? OUTLINE_INSTRUCTION : ''}Work only on the frozen target in the supplied task. Never approve content, apply project edits, or authorize paid production.\n${STRUCTURED_OUTPUT_INSTRUCTION}`,
     })
     scope.ctx.systemPrompt.suppressRuntimeContext()
     scope.ctx.tools.guard((execution) => {
@@ -347,11 +366,13 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
       await next()
       const active = this.bySession.get(agent.id)
       if (!active) throw new Error('Professional model request has no frozen task')
-      return { provider: active.task.resolved.provider, model: active.task.resolved.model, maxTokens: active.task.role.config.maxTokens }
+      return modelCall(active.task.resolved, active.task.role.config.maxTokens)
     })
   }
 
   private async ensureAgent(task: StudioTask, signal: AbortSignal): Promise<Agent> {
+    const project = this.ctx.studioProjects.sessionProject(task.sessionId)
+    if (project) this.openProject(project.root, project.check)
     const existing = this.ctx.agents.get(task.sessionId)
     if (existing) {
       if (existing.status !== 'idle' && !this.policies.has(existing))
@@ -368,7 +389,7 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     const setup = async (agentCtx: Context): Promise<void> => {
       await this.ctx.agentPresets.mount(agentCtx, STUDIO_PRESET)
     }
-    const agentOptions = { provider: task.resolved.provider, model: task.resolved.model, maxTokens: task.role.config.maxTokens }
+    const agentOptions = modelCall(task.resolved, task.role.config.maxTokens)
     const handle = stored
       ? await this.ctx.agents.resume({ resumeSessionId: task.sessionId, signal, agentOptions, setup })
       : await this.ctx.agents.create({
@@ -376,11 +397,81 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
         signal,
         agentOptions,
         setup,
-        meta: { cwd: this.directory, agentPreset: STUDIO_PRESET },
+        meta: { ...project ? {} : { cwd: this.directory }, agentPreset: STUDIO_PRESET },
       })
     this.handles.set(task.sessionId, handle)
     this.ctx.studioProjects.markWorkspaceSession(task.workspaceId)
     return handle.agent
+  }
+
+  /**
+   * Release the project runtime after its tasks settle.
+   * @param root - current project directory.
+   */
+  async closeProject(root: string): Promise<void> {
+    await this.projectStores.get(root)?.store.flush()
+    for (const [id, handle] of [...this.handles]) {
+      if (this.ctx.studioProjects.sessionProject(handle.agent.id)?.root !== root) continue
+      await handle.dispose()
+      this.handles.delete(id)
+    }
+    const mounted = this.projectStores.get(root)
+    if (mounted) {
+      await mounted.store.close()
+      await mounted.remove()
+      this.projectStores.delete(root)
+    }
+  }
+
+  /**
+   * Mount project history without a model request.
+   * @param root - opened directory.
+   * @param check - disk identity check.
+   */
+  openProject(root: string, check: () => void): void {
+    if (this.projectStores.has(root)) return
+    const store = new ProjectSessions(root, check)
+    const remove = this.ctx.sessionPersistence.registerStore({
+      backend: store,
+      owns: id => this.ctx.studioProjects.sessionProject(id)?.root === root,
+    })
+    const stop = this.ctx.on('session/event', (session, event) => {
+      if (this.ctx.studioProjects.sessionProject(session.id)?.root !== root) return
+      void store.record(session.id, event).catch((error: unknown) => {
+        const active = this.bySession.get(session.id)
+        if (active) { active.failure = error instanceof Error ? error : new Error(String(error)); active.controller.abort(active.failure) }
+        this.ctx.logger.error('Unable to persist project conversation', error)
+      })
+    })
+    const stopFlush = this.ctx.on('session/flush', async (session) => {
+      if (this.ctx.studioProjects.sessionProject(session.id)?.root === root) await store.flush()
+    })
+    this.projectStores.set(root, { store, remove: async () => { stop(); stopFlush(); await remove() } })
+  }
+
+  /**
+   * Copy legacy dialogue before installing its project route.
+   * @param ids - initialized identities.
+   * @param root - destination folder.
+   * @param check - disk identity check.
+   */
+  async copySessions(ids: SessionId[], root: string, check: () => void): Promise<void> {
+    const destination = new ProjectSessions(root, check)
+    try {
+      for (const id of ids) {
+        const live = this.handles.get(id)
+        if (live) { await live.dispose(); this.handles.delete(id) }
+        const source = await this.ctx.sessionPersistence.open(id, 'read')
+        try {
+          const target = await destination.create(source.header, { inheritedEventCount: source.inheritedEventCount })
+          try {
+            const content = await source.read()
+            await target.append(content.events)
+            await target.flush()
+          } finally { await target.close() }
+        } finally { await source.close() }
+      }
+    } finally { await destination.close() }
   }
 
   private outputSchema(task: StudioTask): ObjectJsonSchema {
@@ -430,5 +521,14 @@ export class StudioAgents extends Service implements StudioAssistantBackend {
     return done
   }
 }
+
+const OUTLINE_INSTRUCTION = 'Your primary task is to help the creator write and revise the current project story outline. '
+  + 'Use the supplied project concept, sourceText, production specifications and current input.outline, including unsaved edits. '
+  + 'For a drafting or revision request, return the complete usable outline in changes as {field: "outline", value: "full outline text"}; '
+  + 'do not put the deliverable only in reply or return a fragment that would erase unchanged passages. '
+  + 'Develop the premise, central conflict, character arcs, world rules, causal progression and ending as the request requires. '
+  + 'Preserve established facts and material outside the requested revision. Mark creative assumptions and ask only for missing information essential to proceed. '
+  + 'For analysis-only requests or greetings, answer in reply and leave changes empty. '
+  + 'The creator can apply the proposal to the outline editor and save a draft version; do not claim it has already been applied.\n\n'
 
 export default StudioAgents

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/third-party-auth.md
-third-party-auth.md: 15b49d3119942c40f0eaba65d0e758af56f0f021
-third-party-auth.zh.md: e2c11cd2a98520bf2f05838f3b7718422c4f8bdf
+third-party-auth.md: 218be42940a7cf09ec348df6b67836f168805c11
+third-party-auth.zh.md: a052472fb0b3413534bb8091395acbd9185cbddb

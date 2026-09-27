@@ -20,6 +20,8 @@ The Web GUI lets users switch the model and reasoning effort for an existing ses
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+The professional authoring composer uses the same model/effort menu with a target-owned selection and the shared Host catalog. Choosing a model updates the task draft without activating a Session or changing the global default; task submission owns host validation and persistence.
+
 -----
 
 <a id="use-this-package"></a>
@@ -77,7 +79,7 @@ Switching the route can reduce or invalidate provider-side cache reuse for subse
 
 These limits define the current model surface. They are current package constraints, not a general model-router comparison or a task backlog.
 
-- **No create-time or addressed-subagent selection** — both entries require an existing ordinary session's Agent; there is no draft-phase model choice to fold into session creation, and subagent continuation deliberately exposes no independent model-selection contract.
+- **Ordinary chat requires a Session** — `/model` and the chat composer require an existing ordinary Session; only the professional authoring composer accepts a target-owned task draft. Addressed subagent continuation exposes no independent model selection.
 - **Directory names are presentation-only** — selection and persistence use provider/model/effort ids; a provider whose catalog or exact-model metadata lookup fails lists as an unselectable failure row until reload.
 - **No arbitrary effort input** — the composer offers only the exact model's adapter-advertised levels; an adapter without reasoning metadata leaves the Effort row absent.
 

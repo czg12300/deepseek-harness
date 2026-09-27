@@ -16,7 +16,7 @@ export interface Config { connectTimeoutMs: number; maxQueuedEvents: number }
 export class ThirdPartyAuth extends Service {
   static inject = ['settings']
   static Config: Schema<Config> = Schema.object({
-    connectTimeoutMs: Schema.number().min(1).max(2_147_483_647).default(180_000),
+    connectTimeoutMs: Schema.number().min(1).max(2_147_483_647).default(900_000),
     maxQueuedEvents: Schema.number().min(4).max(1024).step(1).default(64),
   })
   private readonly providers = new Map<ProviderId, AccountProvider>()
@@ -130,10 +130,13 @@ export class ThirdPartyAuth extends Service {
     const attempt = new ConnectAttempt(signal, this.config.connectTimeoutMs, this.config.maxQueuedEvents)
     const done = Promise.resolve().then(async () => {
       let status: 'connected' | 'cancelled' | 'failed' = 'failed'
+      let phase: 'authorization' | 'activation' = 'authorization'
+      let reason: 'authorization' | 'activation' | 'timeout' | undefined
       try {
         attempt.signal.throwIfAborted()
         if (await provider.connect(attempt)) {
           attempt.signal.throwIfAborted()
+          phase = 'activation'
           await provider.activate(attempt.signal)
           attempt.signal.throwIfAborted()
           await this.preferences.update({ accounts: { [id]: { enabled: true } } })
@@ -147,10 +150,15 @@ export class ThirdPartyAuth extends Service {
       } catch {
         // Native login failures may contain credentials; the UI receives only a fixed outcome.
         status = attempt.signal.aborted ? 'cancelled' : 'failed'
+        if (status === 'failed') reason = phase
       } finally {
+        if (attempt.signal.reason instanceof DOMException && attempt.signal.reason.name === 'TimeoutError') {
+          status = 'failed'
+          reason = 'timeout'
+        }
         this.attempts.delete(id)
         this.changed()
-        attempt.push({ kind: 'settled', status })
+        attempt.push({ kind: 'settled', status, ...(reason === undefined ? {} : { reason }) })
         attempt.close()
       }
     })

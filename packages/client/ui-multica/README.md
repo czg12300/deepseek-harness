@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Open “Comics” in the left sidebar to manage comic projects and immutable text revisions. Draft outlines and scripts manually or request proposals from the planner and writer. Select proposed fields explicitly, then submit saved content for human review. Recover saved creation forms, publish role configurations and keep conversations attached to their original objects. Media production remains unavailable.
+Open “Comics” in the left sidebar to manage projects, script Markdown, production canvases, and imported media. Draft scripts manually or request planner and writer proposals. Confirm a saved script before creating an episode or whole-film production unit. Review remains separate from production.
 
 ## Table of Contents
 
@@ -24,10 +24,25 @@ The assistant panel preserves unsent prompts per target and displays task status
 
 Agent configuration lists all nine roles and actual capabilities. Planner and writer are enabled by the host runtime; other roles remain unavailable. Publishing a configuration opens a new version-bound conversation for subsequent tasks. Existing conversations remain readable, and running tasks retain their original role and object.
 
+The professional input uses the main conversation card and model menu. Model and reasoning-effort choices are retained per authoring target and captured with each submitted prompt, including uncertain transport retries. Enter sends and Shift+Enter inserts a newline; composing an IME character never sends. Running tasks expose a stop button.
+
+With no explicit draft selection, reopening a workspace restores the model and effort of its latest completed task; failed selections do not replace that choice. The widened assistant panel keeps its input visible while messages scroll independently.
+
+
+The story-outline assistant offers drafting, development and logic-check prompts using the current project and local outline. Shortcuts fill the composer without sending or replacing an unsent request. Outline proposals show the complete replacement and apply to the editor with one explicit action that saves a draft revision; locks and stale-content checks still apply. Work history and settings are collapsed beside the task-focused dialogue.
+
 -----
 
 <a id="use-this-package"></a>
 ## Use this package
+
+“New project” opens a centered dialog above the project catalog or current project. The top-right close button, Escape and backdrop dismiss the dialog while preserving the creation draft for reopening. The form scrolls within the viewport and the create button remains visible.
+
+Each work owns one folder. Choose a new or empty folder below the project name in the creation form; the picker binds that folder directly to this work. Project cards show their saved paths. Use “Open project” in the home header or the “Create or open a project” card to choose an existing folder and recover its content and professional conversations on another device. Cancelling the picker leaves the home page unchanged; opening failures appear on the home page. Each folder-backed card has a top-right “Delete” button. Confirmation removes only its device catalog entry, even when its directory or database is missing. It does not save drafts, close the project or stop its tasks; in-memory drafts remain available. “Open project” can register an available folder again. Project settings provide a complete backup copy. The close action saves the current text buffer, stops local professional tasks and waits for file release before reporting that the directory can be copied or the drive ejected. Failed saves retain the editor and show the host error. Model credentials remain configured on each device.
+
+“All projects” and “Actor library” are tabs in one Multica workspace. Switching tabs keeps the current browser location and library selection. Create independent libraries, add actors with portrait and full-body reference images, search by name, filter by period and region, export a ZIP, or import and merge an archive into the selected library. The Host service owns the SQLite databases and files; the browser only carries user-selected image and archive bytes to the typed Remote calls.
+
+Inside a folder-backed project, the left directory lists story Markdown, production units, and project assets. Select a script to read it in the center and use the right assistant for outline, biography or episode proposals. Biography suggestions save to their own Markdown document rather than the project outline. “Edit document” saves the complete Markdown; “Add episode” creates a new project revision and script file. Explicit script confirmation requires a nonempty saved outline and at least one nonempty episode script. Editing script content invalidates that confirmation. Production units open a draggable canvas with a floating text-assistant composer; its reply becomes a text node only when added explicitly. Import a PNG, JPEG, WebP, MP4, MP3, WAV or OGG file up to 16 MiB into a production unit. The asset catalog filters media and previews images at adjustable scale or plays video and audio in a dialog.
 
 The [Web bundle](../../bundle/web-app/README.md) mounts this browser plugin alongside the [project service](../../multica/studio-core/README.md). It has no plugin configuration fields. The sidebar entry is “Comics” in English and “漫剧” in Chinese; it remains available as an icon with a tooltip when the sidebar is collapsed.
 
@@ -77,12 +92,12 @@ None; this package neither assembles nor sends provider requests.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-The project foundation provides manual text editing and project management.
+Folder-backed projects provide script Markdown, production canvases and imported media alongside project management.
 
 - Unsaved drafts are in memory; browser reload, plugin replacement or closing the page discards them unless saved or exported.
 - History and save conflicts operate on complete projects, including all episode drafts. There is no automatic field merge or separate episode revision counter.
 - Other windows' edits are discovered on project reads or saves; the service provides no live project-change subscription.
-- Shared media assets, generation, budgets and editing/export are unavailable. Unconfigured assistants report their actual failure; no successful model or production result is synthesized.
+- Model-driven image, video, and audio generation, budgets, timeline editing, and final export are unavailable. The canvas assistant provides text suggestions through the existing planner or writer target; imported files are the only media assets. Actor reference images and actor-library ZIPs do not produce project media. Unconfigured assistants report their actual failure.
 
 <a id="dev-note"></a>
 ### Dev Note

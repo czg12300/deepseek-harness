@@ -1,5 +1,5 @@
 ---
-description: "Account connection and model selection in the optional third-party authorization plugins."
+description: "Account connection and model selection through third-party authorization plugins."
 kind: "package-reference"
 ---
 
@@ -24,6 +24,8 @@ Manage subscription connections in Settings → Third-party authorization. The p
 
 <a id="use-this-package"></a>
 ## Use this package
+
+A committed connection immediately updates its account card without waiting for other providers or model discovery. The account page keeps the final sign-in result visible above the account cards. It distinguishes authorization or credential-storage failure, account-activation failure, and timeout. A saved ChatGPT grant with a disabled account offers “Finish connecting account” without repeating browser sign-in.
 
 Load the sibling bundle in the Web profile. Connect an account, choose a default from its discovered models, and select Start a session with this model. The native window requires an explicit working directory and supports conversation selection, follow-up messages, stopping, and permission answers.
 

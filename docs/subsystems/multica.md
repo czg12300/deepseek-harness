@@ -6,6 +6,8 @@ The [Multica group](../../packages/multica/README.md) owns saved project specifi
 
 ## Identity and versions
 
+`StudioFolderId` is a branded manifest identity that survives relocation. `StudioFolder` projects the current device path, optional project or creation-form identity, cached title and summary, and `open`, `closed` or `missing` availability. A cached summary does not grant write access; the owning directory must be open.
+
 Project and episode IDs are distinct branded strings. Episodes belong to one project; a save cannot reuse another project's episode identity. Project revisions are positive integers. The caller supplies the expected revision for every save or archive change.
 
 A successful write returns the committed project. A conflict returns the current project and writes nothing. An archived project rejects content saves until explicitly restored. Project lookup and history always name the project identity; historical content remains accessible after later saves or archive changes.
@@ -14,9 +16,13 @@ The saved project includes its name, concept, imported source text, aspect ratio
 
 ## Runtime ownership
 
-The local SQLite database belongs to the host service and survives browser and server restarts. The browser retains pending edits for the current editing session and submits them explicitly. Browser storage is not the authority for saved projects.
+Each portable project owns its directory, SQLite revisions, recoverable editor buffers and professional Session storage. The device database retains recent locations and legacy works. A versioned manifest identifies the project independently of its current absolute directory; an exclusive project lock owns the writable lifetime. Opening, closing and migration semantics are defined by the [project service](../../packages/multica/studio-core/README.md#portable-project-folders).
 
-Project creation and manual saves do not create Agents. The [professional runtime](../../packages/multica/studio-agents/README.md) executes explicit planner and writer tasks and logs their frozen inputs in dedicated Sessions. Proposal application and exact-version content approval remain separate human operations; media production is unavailable.
+`ScriptDocumentId`, `ProductionUnitId`, `CanvasNodeId` and `ProjectMediaId` identify project-local Markdown, canvases, nodes and imported files. Script text is mirrored under `scripts/` and indexed by project SQLite. Explicit completion records a digest of the saved outline and episode scripts; a script edit invalidates it and prevents creation of another production unit until reconfirmed. Production nodes and imported media are stored in the project folder; image, video and audio bytes are read only for a selected preview.
+
+Actor libraries are independent of projects. Each library has its own directory, SQLite actor records and referenced images under the device database's sibling `actor/` directory. Libraries can be exported as bounded ZIP archives or merged without overwriting conflicting actor versions; the [actor-library design](../../multica/doc/actor-library.md) defines the file and identity rules.
+
+Project creation and manual saves do not create Agents. The [professional runtime](../../packages/multica/studio-agents/README.md) executes explicit planner and writer tasks and logs their frozen inputs in dedicated Sessions. Proposal application and exact-version content approval remain separate human operations. The production canvas can retain text suggestions and imported media; model-driven media generation is unavailable.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -44,11 +50,12 @@ registerContextTool(tool: StudioContextTool): () => Promise<void>
  */
 async catalog(): Promise<StudioAssistantCatalog>
 
-/** Resolve model and dependency content once, before its workspace begins execution.
+/** Resolve a task model and selected dependency content before admission.
  * @param role - immutable, validated role configuration.
+ * @param selection - explicit task model selection, overriding the role default.
  * @returns the effective model and selected skill bodies/tool identities.
  */
-async resolve(role: StudioRoleRevision): Promise<StudioResolvedRole>
+async resolve(role: StudioRoleRevision, selection?: Pick<StudioResolvedRole, 'provider' | 'model' | 'reasoningEffort'>): Promise<StudioResolvedRole>
 
 /** Drive exactly one explicit task, retaining Session history while task-local tools are disposed.
  * @param task - fully frozen, persisted task supplied by the project service.
@@ -61,7 +68,30 @@ async execute(task: StudioTask): Promise<StudioAssistantResult>
  * @returns after all task-local tools and pending model work have stopped.
  */
 async cancel(id: StudioTaskId): Promise<void>
+
+/**
+ * Release the project runtime after its tasks settle.
+ * @param root - current project directory.
+ */
+async closeProject(root: string): Promise<void>
+
+/**
+ * Mount project history without a model request.
+ * @param root - opened directory.
+ * @param check - disk identity check.
+ */
+openProject(root: string, check: () => void): void
+
+/**
+ * Copy legacy dialogue before installing its project route.
+ * @param ids - initialized identities.
+ * @param root - destination folder.
+ * @param check - disk identity check.
+ */
+async copySessions(ids: SessionId[], root: string, check: () => void): Promise<void>
 ```
+
+Types: [SessionId](core.md)
 
 Source: [`packages/multica/studio-agents/src/index.ts`](../../packages/multica/studio-agents/src/index.ts)
 
@@ -69,9 +99,238 @@ Source: [`packages/multica/studio-agents/src/index.ts`](../../packages/multica/s
 
 ### `ctx.studioProjects` — `StudioProjects`
 
-Revisioned projects and permanent episode identities exposed as studioProjects Remote methods.
+Project operations routed by stable identities to independently portable folders.
 
 ```ts cordis-catalog
+/** List independent actor-library folders.
+ * @returns local libraries and actor counts.
+ */
+@Remote('actorLibraries') actorLibraries(): ActorLibrarySummary[]
+
+/** Create a portable actor library under the device's actor directory.
+ * @param name - library name.
+ * @returns new library summary.
+ */
+@Remote('createActorLibrary') createActorLibrary(name: string): ActorLibrarySummary
+
+/** Search actors in one independent library.
+ * @param id - library identity.
+ * @param search - name fragment.
+ * @param period - exact period filter.
+ * @param region - exact region filter.
+ * @param offset - result offset for paging.
+ * @returns first page and full matching count.
+ */
+@Remote('libraryActors') libraryActors(id: ActorLibraryId, search: string, period: string, region: string, offset: number): ActorPage
+
+/** Read one actor and its two reference images.
+ * @param libraryId - library identity.
+ * @param actorId - actor identity.
+ * @returns actor or null.
+ */
+@Remote('libraryActor') libraryActor(libraryId: ActorLibraryId, actorId: ActorId): Actor | null
+
+/** Save user-authored actor details without model work.
+ * @param libraryId - destination library.
+ * @param actorId - actor to replace, or null for a new actor.
+ * @param input - complete details and reference images.
+ * @returns committed actor.
+ */
+@Remote('saveLibraryActor') saveLibraryActor(libraryId: ActorLibraryId, actorId: ActorId | null, input: ActorInput): Actor
+
+/** Export a complete portable library archive.
+ * @param id - source library.
+ * @returns ZIP data URL and suggested filename.
+ */
+@Remote('exportActorLibrary') exportActorLibrary(id: ActorLibraryId): { name: string; dataUrl: string }
+
+/** Install or merge a validated actor-library archive.
+ * @param dataUrl - ZIP data URL.
+ * @param target - destination library, or null to install separately.
+ * @returns destination and merge counts.
+ */
+@Remote('importActorLibrary') importActorLibrary(dataUrl: string, target: ActorLibraryId | null): ActorImportResult
+
+/** List project-local Markdown files, materializing committed scripts on disk.
+ * @param id - mounted project.
+ * @returns ordered script documents.
+ */
+@Remote('scriptDocuments') scriptDocuments(id: ProjectId): ScriptDocument[]
+
+/** Read a project Markdown document.
+ * @param projectId - mounted project.
+ * @param documentId - document identity.
+ * @returns document or null.
+ */
+@Remote('scriptDocument') scriptDocument(projectId: ProjectId, documentId: ScriptDocumentId): ScriptDocument | null
+
+/** Save Markdown, preserving project revision checks for outline and episode scripts.
+ * @param projectId - mounted project.
+ * @param documentId - document identity.
+ * @param expectedRevision - observed document revision.
+ * @param markdown - replacement text.
+ * @returns committed document.
+ */
+@Remote('saveScriptDocument') saveScriptDocument(projectId: ProjectId, documentId: ScriptDocumentId, expectedRevision: number, markdown: string): ScriptDocument
+
+/** Read the user's completion decision against the current script digest.
+ * @param id - mounted project.
+ * @returns whether the script remains complete.
+ */
+@Remote('scriptComplete') scriptComplete(id: ProjectId): boolean
+
+/** Confirm a complete saved script before admitting production.
+ * @param id - mounted project.
+ * @param expectedRevision - reviewed saved revision.
+ * @returns true after confirmation.
+ */
+@Remote('completeScript') completeScript(id: ProjectId, expectedRevision: number): boolean
+
+/** List episode and whole-film production units.
+ * @param id - mounted project.
+ * @returns saved units.
+ */
+@Remote('productionUnits') productionUnits(id: ProjectId): ProductionUnit[]
+
+/** Create an episode or whole-film canvas.
+ * @param id - mounted project.
+ * @param kind - production template.
+ * @param episodeId - source episode for episode units.
+ * @param title - unit name.
+ * @returns created unit.
+ */
+@Remote('createProductionUnit') createProductionUnit(id: ProjectId, kind: ProductionUnit['kind'], episodeId: EpisodeId | null, title: string): ProductionUnit
+
+/** Read one production canvas.
+ * @param id - mounted project.
+ * @param unitId - production unit.
+ * @returns persisted nodes.
+ */
+@Remote('canvasNodes') canvasNodes(id: ProjectId, unitId: ProductionUnitId): CanvasNode[]
+
+/** Add a text or media-reference node.
+ * @param id - mounted project.
+ * @param unitId - owning canvas.
+ * @param kind - node kind.
+ * @param label - node title.
+ * @param x - canvas x coordinate.
+ * @param y - canvas y coordinate.
+ * @param assetId - optional media identity.
+ * @param text - script-node text or null for media.
+ * @returns created node.
+ */
+@Remote('addCanvasNode') addCanvasNode(id: ProjectId, unitId: ProductionUnitId, kind: CanvasNode['kind'], label: string, x: number, y: number, assetId: ProjectMediaId | null, text: string | null): CanvasNode
+
+/** Move one canvas node under an expected revision.
+ * @param id - mounted project.
+ * @param unitId - owning canvas.
+ * @param nodeId - node identity.
+ * @param revision - observed revision.
+ * @param x - new x coordinate.
+ * @param y - new y coordinate.
+ * @returns updated node.
+ */
+@Remote('moveCanvasNode') moveCanvasNode(id: ProjectId, unitId: ProductionUnitId, nodeId: CanvasNodeId, revision: number, x: number, y: number): CanvasNode
+
+/** List indexed image, video and audio artifacts.
+ * @param id - mounted project.
+ * @returns media metadata.
+ */
+@Remote('projectMedia') projectMedia(id: ProjectId): ProjectMediaAsset[]
+
+/** Import bounded media into one production canvas.
+ * @param id - mounted project.
+ * @param unitId - destination production unit.
+ * @param name - source filename.
+ * @param dataUrl - validated media bytes.
+ * @returns indexed media.
+ */
+@Remote('importProjectMedia') importProjectMedia(id: ProjectId, unitId: ProductionUnitId, name: string, dataUrl: string): ProjectMediaAsset
+
+/** Return bounded media bytes for an original-image or audio/video preview.
+ * @param id - mounted project.
+ * @param assetId - indexed media identity.
+ * @returns data URL or null when unknown.
+ */
+@Remote('projectMediaData') projectMediaData(id: ProjectId, assetId: ProjectMediaId): string | null
+
+/**
+ * Read recent portable locations without opening or creating project files.
+ * @returns recent folders and availability.
+ */
+@Remote('projectFolders') projectFolders(): StudioFolder[]
+
+/**
+ * Open a portable project or creation form.
+ * @param path - absolute project directory.
+ * @returns its current location.
+ */
+@Remote('openFolder') openFolder(path: string): StudioFolder
+
+/**
+ * Establish a portable creation form before any assistant task.
+ * @param path - empty absolute directory.
+ * @param id - form identity.
+ * @param input - initial form.
+ * @returns its saved location.
+ */
+@Remote('prepareFolder') async prepareFolder(path: string, id: StudioCreationId, input: ProjectInput): Promise<StudioFolder>
+
+/**
+ * Drain professional work, flush its history, then release all project files.
+ * @param id - open folder identity.
+ */
+@Remote('closeFolder') async closeFolder(id: StudioFolderId): Promise<void>
+
+/**
+ * Hide a catalog entry without accessing project files or changing its mounted runtime.
+ * @param id - recent location identity.
+ */
+@Remote('forgetFolder') forgetFolder(id: StudioFolderId): void
+
+/**
+ * Reveal the currently opened directory on the application host.
+ * @param id - mounted folder.
+ * @param signal - caller cancellation.
+ */
+@Remote('revealFolder') async revealFolder(id: StudioFolderId, signal: AbortSignal): Promise<void>
+
+/** Copy a legacy project and its dialogue into an empty portable directory; the source remains intact.
+ * @param id - legacy project identity.
+ * @param path - empty destination directory.
+ * @returns the opened portable location after all histories have been copied.
+ */
+@Remote('migrateProject') async migrateProject(id: ProjectId, path: string): Promise<StudioFolder>
+
+/**
+ * Save a complete copy and close the source for transfer.
+ * @param id - source folder.
+ * @param destination - empty absolute destination.
+ */
+@Remote('backupFolder') async backupFolder(id: StudioFolderId, destination: string): Promise<void>
+
+/**
+ * Persist a recoverable editor buffer without creating a formal content revision.
+ * @param id - project identity.
+ * @param baseRevision - version edited.
+ * @param input - complete buffer.
+ */
+@Remote('saveEditorDraft') saveEditorDraft(id: ProjectId, baseRevision: number, input: ProjectInput): void
+
+/**
+ * Read a recoverable buffer; its base revision may require conflict resolution.
+ * @param id - project identity.
+ * @returns saved buffer or null.
+ */
+@Remote('editorDraft') editorDraft(id: ProjectId): { baseRevision: number; input: ProjectInput } | null
+
+/**
+ * Resolve a professional Session's currently mounted directory.
+ * @param id - reserved Session identity.
+ * @returns current root and disk check, or undefined for legacy sessions.
+ */
+sessionProject(id: SessionId): { root: string; check: () => void } | undefined
+
 /**
  * List current projects, including archived ones, sorted by update time then stable identity.
  * @returns Metadata without creative text bodies; corrupt stored documents throw.
@@ -169,17 +428,19 @@ Revisioned projects and permanent episode identities exposed as studioProjects R
 proposalFields(target: StudioTarget): StudioField[]
 
 /** List the published professional-role configurations.
+ * @param folderId - open project identity, or omit for device templates.
  * @returns one current version for each role.
  */
-@Remote('roles') roles(): StudioRoleRevision[]
+@Remote('roles') roles(folderId?: StudioFolderId): StudioRoleRevision[]
 
 /** Publish a human-edited role configuration; existing workspaces retain their versions.
  * @param role - role identity.
  * @param expectedRevision - version edited by the user.
  * @param config - complete professional configuration.
+ * @param folderId - open project identity, or omit for device templates.
  * @returns the new immutable role revision.
  */
-@Remote('publishRole') async publishRole(role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig): Promise<StudioRoleRevision>
+@Remote('publishRole') async publishRole( role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig, folderId?: StudioFolderId, ): Promise<StudioRoleRevision>
 
 /** Open recorded dialogue without starting an Agent or making a model request.
  * @param target - stable project, episode, or creation-form target.

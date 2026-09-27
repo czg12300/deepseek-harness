@@ -8,7 +8,7 @@ import { apply as applyHost } from '../src/index.ts'
 import { en, zh, type MulticaKey } from '../src/client/locales.ts'
 import { createMulticaStore, emptyInput } from '../src/client/drafts.ts'
 import type { WorkspaceInjected } from '../src/client/Workspace.tsx'
-import type { Project, ProjectId, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Project, ProjectId, RemoteResult, StudioFolder, StudioCreationDraft } from '@deepseek-ai/dsh-api-remotes/client'
 
 function Empty({ renderSlot }: PropsRuntime<'root'> & PropsRenderSlots<'main' | 'sidebar.panellist'>) {
   void renderSlot
@@ -33,7 +33,7 @@ describe('Multica slot lifecycle', () => {
       // The registry and locale are explicit fixture dependencies; no Remote method runs during registration.
       const feature = ctx.plugin({ inject: ['slots', 'locale'], apply })
       await feature.await()
-      expect(inject).toEqual(['slots', 'locale', 'remote', 'remote.studioProjects'])
+      expect(inject).toEqual(['slots', 'locale', 'remote', 'remote.studioProjects', 'remote.directoryPicker'])
       expect(ctx.slots.entries('main')).toEqual([])
       const declare = (): (() => void) =>
         ctx.slots.register(
@@ -84,7 +84,16 @@ describe('Multica slot lifecycle', () => {
       updatedAt: '2026-09-10T00:00:00.000Z',
     }
     const success = <T>(value: T): RemoteResult<T> => ({ ok: true, value })
+    let folders: StudioFolder[] = []
+    let creation: StudioCreationDraft | null = null
     const api = {
+      projectFolders: vi.fn(async () => success(folders)),
+      forgetFolder: vi.fn(async () => { folders = []; return success(undefined) }),
+      saveEditorDraft: vi.fn(async () => ({ ok: false as const, error: { code: 'internal', message: 'ENOENT: project.sqlite' } })),
+      closeFolder: vi.fn(async () => ({ ok: false as const, error: { code: 'internal', message: 'ENOENT: project.sqlite' } })),
+      creationDraft: vi.fn(async () => success(creation)),
+      createFromDraft: vi.fn(async () => success(project)),
+      editorDraft: vi.fn(async () => success(null)),
       coverUploadLimit: vi.fn(async () => success(1048576)),
       setCover: vi.fn(async (_id: ProjectId, revision: number, image: string | null) => success({ revision: revision + 1, image })),
       list: vi.fn(async () => success([{ ...project, cover: { revision: 0, image: null }, episodeCount: 0 }])),
@@ -95,7 +104,10 @@ describe('Multica slot lifecycle', () => {
       history: vi.fn(async () => success([project])),
       creationDrafts: vi.fn(async () => success([])),
     }
-    ctx.provide('remote', { studioProjects: api } as never)
+    const picker = { pick: vi.fn(async () => success('/projects/picked')) }
+    ctx.provide('remote', { studioProjects: api, directoryPicker: picker } as never)
+    ctx.provide('remote.studioProjects', api as never)
+    ctx.provide('remote.directoryPicker', picker as never)
     const undeclare = ctx.slots.register(
       {
         name: 'root',
@@ -104,7 +116,7 @@ describe('Multica slot lifecycle', () => {
       Empty,
     )
     try {
-      const feature = ctx.plugin({ inject: ['slots', 'locale', 'remote'], apply })
+      const feature = ctx.plugin({ inject, apply })
       await feature.await()
       const entry = ctx.slots.entries('main')[0]!
       const store = createMulticaStore().create()
@@ -114,12 +126,21 @@ describe('Multica slot lifecycle', () => {
       expect(typeof label === 'function' && label()).toBe('漫剧')
       language = 'en'
       expect(typeof label === 'function' && label()).toBe('Comics')
+      expect(await face.portable!.pick()).toBe('/projects/picked')
+      expect(picker.pick).toHaveBeenCalledOnce()
       await face.load()
       await face.open(id)
       expect(face.hooks.projects.getSnapshot().list).toHaveLength(1)
       store.actions.startCreate()
       await face.create({ ...emptyInput(), name: 'Created' }, 0, store.getSnapshot().creationId, null)
-      expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Created' }))
+      expect(api.create).not.toHaveBeenCalled()
+      expect(api.createFromDraft).not.toHaveBeenCalled()
+      creation = { id: store.getSnapshot().creationId, revision: 1, input: { ...emptyInput(), name: 'Created' }, updatedAt: project.updatedAt }
+      folders = [{ id: '00000000-0000-4000-8000-000000000003' as StudioFolder['id'], path: '/projects/story',
+        creationId: creation.id, projectId: null, name: 'Created', state: 'open' }]
+      await face.load()
+      await face.create(creation.input, 0, creation.id, null)
+      expect(api.createFromDraft).toHaveBeenCalledWith(creation.id, 1, expect.objectContaining({ name: 'Created' }))
       store.actions.edit(id, { outline: 'Submitted' })
       await face.save(id, store.getSnapshot().drafts[id]!)
       expect(api.save).toHaveBeenCalledWith(id, 1, expect.objectContaining({ outline: 'Submitted' }))
@@ -130,6 +151,16 @@ describe('Multica slot lifecycle', () => {
       vi.mocked(api.get).mockResolvedValueOnce({ ok: false, error: { code: 'internal', message: 'Unavailable' } } as never)
       await face.open(id)
       expect(face.hooks.projects.getSnapshot().byId[id]?.error).toBe(true)
+      const folderId = folders[0]!.id
+      store.actions.edit(id, { outline: 'Keep this unsaved draft' })
+      const retained = store.getSnapshot().drafts[id]!
+      await expect(face.portable!.autosave(id, retained)).rejects.toThrow('ENOENT')
+      await face.portable!.forget(folderId)
+      expect(api.forgetFolder).toHaveBeenCalledWith(folderId)
+      expect(api.closeFolder).not.toHaveBeenCalled()
+      expect(api.saveEditorDraft).toHaveBeenCalledOnce()
+      expect(store.getSnapshot().drafts[id]).toEqual(retained)
+      expect(face.hooks.projects.getSnapshot().folders).toEqual([])
       const clean = new Event('beforeunload', { cancelable: true })
       window.dispatchEvent(clean)
       expect(clean.defaultPrevented).toBe(false)

@@ -24,6 +24,8 @@ Project data and Session data retain separate authorities. Future agent integrat
 
 **Separate version tables for every future production object.** Assets, approvals and generation tasks need independent identities when those capabilities arrive. The project foundation has only specifications and text drafts, so one aggregate keeps a save atomic without implementing unvalidated later-stage relations.
 
+Directory portability and project-local Session placement are owned by the [portable project decision](2026-09-17-portable-multica-projects.md).
+
 ## Consequences
 
 An aggregate revision costs storage proportional to the project's text and causes conflicts even when two editors change different episodes. It gives the initial local workspace one consistent restore point and keeps history independent of browser state. Large production assets and finer-grained editing need their own version owners before media production is enabled.

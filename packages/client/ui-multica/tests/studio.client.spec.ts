@@ -46,7 +46,9 @@ describe('professional request ownership', () => {
     vi.mocked(api.workspace).mockResolvedValue(view)
     const submitted = vi.fn()
     const input = { ...emptyInput(), name: 'Original project', outline: 'Captured text' }
-    await model.send(view.workspace.id, 1, input, 'Original request', submitted)
+    const modelSelection = { provider: 'second-provider', model: 'creative', reasoningEffort: 'high' }
+    await model.send(view.workspace.id, 1, input, 'Original request', submitted, modelSelection)
+    expect(api.start).toHaveBeenCalledWith(expect.objectContaining({ modelSelection }))
     expect(submitted).not.toHaveBeenCalled()
     expect(model.source.getSnapshot().byId[view.workspace.id]?.retry?.input.outline).toBe('Captured text')
     await model.send(view.workspace.id, 1, { ...input, outline: 'Later text' }, 'Later request', submitted)

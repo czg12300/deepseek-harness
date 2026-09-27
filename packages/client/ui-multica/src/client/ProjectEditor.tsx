@@ -24,7 +24,9 @@ type EditorProps = WorkspaceProps & {
 }
 
 /** @param props - current project selection, remote observations, and editor callbacks. @returns the project workspace. */
-export function ProjectEditor({ state, queries, studio, studioActions, id, choose, actions, t, save, open, history }: EditorProps) {
+export function ProjectEditor({
+  state, queries, studio, studioActions, id, choose, actions, t, save, open, history, renderSlot,
+}: EditorProps) {
   const query = queries.byId[id]
   const draft = state.drafts[id]
   const page = state.pages[id]
@@ -37,7 +39,7 @@ export function ProjectEditor({ state, queries, studio, studioActions, id, choos
   const previous = draft?.input.episodes[episodeIndex - 1]
   const next = draft?.input.episodes[episodeIndex + 1]
   const archived = project?.archived ?? false
-  const blocked = archived || !!query?.saving || !!query?.missing
+  const blocked = archived || !!query?.saving || !!query?.missing || !!queries.lifecycleBusy
   const target = useMemo<StudioTarget>(
     () =>
       page === 'episodes'
@@ -432,18 +434,27 @@ export function ProjectEditor({ state, queries, studio, studioActions, id, choos
                     </div>
                   </>
                 ) : (
-                  <label className={css.field}>
-                    {t('outline')}
-                    <textarea
-                      className={css.manuscript}
-                      placeholder={t('outlineHint')}
-                      value={draft.input.outline}
-                      disabled={blocked}
-                      onChange={(e) => {
-                        actions.edit(id, { outline: e.target.value })
-                      }}
-                    />
-                  </label>
+                  <>
+                    <p className={css.outlineGuidance}>{t('outlineEditorHint')}</p>
+                    {draft.input.concept && (
+                      <section className={css.outlineBrief} aria-label={t('outlineBrief')}>
+                        <strong>{t('outlineBrief')}</strong>
+                        <p>{draft.input.concept}</p>
+                      </section>
+                    )}
+                    <label className={css.field}>
+                      {t('outline')}
+                      <textarea
+                        className={css.manuscript}
+                        placeholder={t('outlineHint')}
+                        value={draft.input.outline}
+                        disabled={blocked}
+                        onChange={(e) => {
+                          actions.edit(id, { outline: e.target.value })
+                        }}
+                      />
+                    </label>
+                  </>
                 )}
                 <footer className={css.saveBar}>
                   <span role="status">{t(query.saving ? 'saving' : draft.dirty ? 'dirty' : 'saved')}</span>
@@ -468,7 +479,7 @@ export function ProjectEditor({ state, queries, studio, studioActions, id, choos
               </>
             )}
             <div className={css.draftFoot}>
-              <p>{t('draftNotice')}</p>
+              <p>{t(queries.folders?.some(folder => folder.projectId === id) ? 'portableDraftNotice' : 'draftNotice')}</p>
               {draft.dirty && !draft.conflict && (
                 <Button
                   disabled={query.saving}
@@ -492,6 +503,7 @@ export function ProjectEditor({ state, queries, studio, studioActions, id, choos
       </main>
       {page !== 'settings' && page !== 'history' && draft && (
         <AssistantPanel
+          renderSlot={renderSlot}
           state={state}
           studio={studio}
           studioActions={studioActions}

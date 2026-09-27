@@ -99,10 +99,17 @@ export const assistantResultSchema = z
     value => new Set(value.changes.map(change => change.field)).size === value.changes.length,
     'Each field may be proposed only once',
   )
+/** Task model selections are validated at the RPC and durable JSON readers. */
+export const modelSelectionSchema = z.strictObject({
+  provider: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+  reasoningEffort: z.string().trim().min(1).optional(),
+})
 /** Explicit task input includes the local draft snapshot and the saved version it extends. */
 export const taskRequestSchema = z.strictObject({
   workspaceId: workspaceIdSchema,
   requestId: z.uuid().transform(value => value as StudioRequestId),
+  modelSelection: modelSelectionSchema.optional(),
   expectedRevision: revisionSchema.nullable(),
   input: creationInputSchema,
   prompt: z
@@ -201,10 +208,8 @@ export const roleRevisionSchema = z.strictObject({
   config: roleConfigSchema,
   createdAt: z.iso.datetime(),
 })
-/** Resolved dependencies remain identical throughout a workspace's Session. */
-export const resolvedRoleSchema = z.strictObject({
-  provider: z.string().min(1),
-  model: z.string().min(1),
+/** Skills and tools remain workspace-owned; tasks may select their own model route. */
+export const resolvedRoleSchema = modelSelectionSchema.extend({
   skills: z.array(z.strictObject({ name: z.string().min(1), content: z.string() })),
   tools: z.array(z.string().min(1)),
 })
@@ -223,6 +228,7 @@ export const taskSchema = z.strictObject({
   id: taskIdSchema,
   workspaceId: workspaceIdSchema,
   requestId: z.uuid().transform(value => value as StudioRequestId),
+  modelSelection: modelSelectionSchema.optional(),
   target: targetSchema,
   role: roleRevisionSchema,
   resolved: resolvedRoleSchema,

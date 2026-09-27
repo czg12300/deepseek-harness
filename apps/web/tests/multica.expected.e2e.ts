@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { chromium, type Locator, type Page } from 'playwright'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+import { LlmAdapter, ToolCallId, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import {
   acknowledgeReloadConnectionLoss, assertFixtureInventory, captureStableAria,
   compareOrRefreshGolden, launchWebScaffold, watchConsole,
@@ -22,7 +23,8 @@ const SECOND_OUTLINE = 'A courier crosses the desert to deliver the last seed.'
 // Labels mirror packages/client/ui-multica/src/client/locales.ts. Importing
 // that Client package would pull its compiler program into this Host test.
 
-async function projectRequest(page: Page, action: Locator, method: 'create' | 'get' | 'save' | 'setArchived' | 'submitReview' | 'decideReview'): Promise<void> {
+async function projectRequest(page: Page, action: Locator, method: 'create' | 'createFromDraft' | 'prepareFolder' | 'closeFolder' | 'forgetFolder' | 'openFolder' | 'get' | 'save' | 'setArchived' | 'submitReview' | 'decideReview' | 'saveScriptDocument' | 'completeScript' | 'createProductionUnit' | 'addCanvasNode' | 'importProjectMedia'): Promise<void> {
+  if (vi.isFakeTimers()) vi.setSystemTime(Date.now() + 1000)
   const [response] = await Promise.all([
     page.waitForResponse(candidate => candidate.request().method() === 'POST'
       && new URL(candidate.url()).pathname === `/api/studioProjects/${method}`),
@@ -35,159 +37,202 @@ async function projectRequest(page: Page, action: Locator, method: 'create' | 'g
 
 /** Read the temp database independently of the service and browser's project state. */
 function persistedProjects(harnessHome: string) {
-  const db = new DatabaseSync(join(harnessHome, 'multica/studio.sqlite'), { readOnly: true })
-  try {
-    return db.prepare(`
-      SELECT json_extract(document, '$.name') AS name,
-             json_extract(document, '$.outline') AS outline,
-             json_extract(document, '$.archived') AS archived
-      FROM project_revisions current
-      WHERE revision = (SELECT MAX(revision) FROM project_revisions WHERE project_id = current.project_id)
-      ORDER BY name
-    `).all()
-  } finally {
-    db.close()
-  }
+  const catalog = new DatabaseSync(join(harnessHome, 'multica/studio.sqlite'), { readOnly: true })
+  const paths = catalog.prepare("SELECT json_extract(document, '$.path') AS path FROM studio_locations").all()
+  catalog.close()
+  return paths.flatMap((row) => {
+    const db = new DatabaseSync(join(String(row.path), 'project.sqlite'), { readOnly: true })
+    try {
+      return db.prepare(`SELECT json_extract(document, '$.name') AS name, json_extract(document, '$.outline') AS outline,
+        json_extract(document, '$.archived') AS archived FROM project_revisions current
+        WHERE revision = (SELECT MAX(revision) FROM project_revisions WHERE project_id = current.project_id)`).all()
+    } finally { db.close() }
+  }).sort((a, b) => String(a.name).localeCompare(String(b.name)))
 }
 
-it('keeps Comics projects isolated across saves, reload, archive and restore', async () => {
+it('persists Markdown scripts, production canvases and project assets in portable folders', async () => {
   const scaffold = await launchWebScaffold()
+  let chosenDirectory: string | null = null
+  const pick = vi.fn(async () => chosenDirectory)
+  const pickerCapability = vi.spyOn(scaffold.ctx.directoryPicker, 'capability').mockReturnValue({ kind: 'native', pick })
   try {
-    expect(persistedProjects(scaffold.harnessHome)).toEqual([])
-    expect(scaffold.ctx.sessions.list()).toEqual([])
-    const sessionEvents: string[] = []
-    scaffold.ctx.on('session/event', (_session, event) => { sessionEvents.push(event.type) })
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-10T12:00:00Z') })
     const browser = await chromium.launch()
     let failurePage: Page | undefined
     try {
       const page = await newEnglishPage(browser)
       failurePage = page
       const tripwire = watchConsole(page)
-      const comics = page.getByRole('navigation', { name: 'Global panels' })
-        .getByRole('button', { name: 'Comics', exact: true })
-      const outline = page.getByRole('textbox', { name: 'Story outline', exact: true })
-      const save = page.getByRole('button', { name: 'Save draft', exact: true })
-
-      const allProjects = async (): Promise<void> => {
-        await page.getByRole('button', { name: 'Back to all projects', exact: true }).click()
-        await page.getByRole('heading', { name: 'All projects', exact: true }).waitFor()
-      }
-      const createProject = async (name: string, concept: string): Promise<void> => {
+      await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+      await page.getByRole('navigation', { name: 'Global panels' }).getByRole('button', { name: 'Comics', exact: true }).click()
+      const create = async (name: string, concept: string): Promise<void> => {
         await page.getByRole('button', { name: 'New project', exact: true }).first().click()
         await page.getByRole('textbox', { name: 'Project name', exact: true }).fill(name)
         await page.getByRole('textbox', { name: 'One-line concept', exact: true }).fill(concept)
-        await projectRequest(page, page.getByRole('button', { name: 'Create project', exact: true }), 'create')
-        await outline.waitFor()
-        await expect.poll(() => outline.inputValue(), UI_WAIT).toBe('')
+        chosenDirectory = join(scaffold.workspaceCwd, name)
+        await mkdir(chosenDirectory)
+        await projectRequest(page, page.getByRole('button', { name: 'Choose folder', exact: true }), 'prepareFolder')
+        await projectRequest(page, page.getByRole('button', { name: 'Create project', exact: true }), 'createFromDraft')
+        await page.getByRole('button', { name: 'Edit document', exact: true }).waitFor()
       }
-      const saveOutline = async (text: string): Promise<void> => {
-        await outline.fill(text)
-        await projectRequest(page, save, 'save')
-        await page.getByText('Saved', { exact: true }).waitFor()
+      const editDocument = async (markdown: string): Promise<void> => {
+        await page.getByRole('button', { name: 'Edit document', exact: true }).click()
+        const dialog = page.getByRole('dialog', { name: 'Edit document' })
+        await dialog.getByRole('textbox', { name: 'Markdown source' }).fill(markdown)
+        await projectRequest(page, dialog.getByRole('button', { name: 'Save draft', exact: true }), 'saveScriptDocument')
+        await dialog.waitFor({ state: 'hidden' })
+        await page.getByText(markdown, { exact: true }).waitFor()
       }
-      const openProject = async (name: string, text: string): Promise<void> => {
-        await projectRequest(page, page.getByRole('article', { name, exact: true })
-          .getByRole('button', { name: 'Open project', exact: true }), 'get')
-        await page.getByRole('button', { name: 'Story outline', exact: true }).click()
-        await expect.poll(() => outline.inputValue(), UI_WAIT).toBe(text)
-        await expect.poll(() => page.locator(WORKSPACE).getByText('Loading…', { exact: true }).count(), UI_WAIT).toBe(0)
+      const allProjects = async (): Promise<void> => {
+        await page.getByRole('button', { name: 'Back to all projects', exact: true }).first().click()
+        await page.getByRole('tab', { name: 'All projects', exact: true }).waitFor()
       }
-
-      await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
-      await comics.click()
-      await expect.poll(() => comics.getAttribute('aria-current'), UI_WAIT).toBe('page')
-      await page.getByRole('heading', { name: 'All projects', exact: true }).waitFor()
-      await page.getByRole('button', { name: 'New project', exact: true }).first().click()
-      const creation = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
-      expect(await page.getByRole('textbox', { name: 'Project name', exact: true }).isVisible()).toBe(true)
-      expect(await page.getByRole('spinbutton').count()).toBe(0)
-      expect(await page.getByRole('textbox', { name: 'Request for the professional assistant', exact: true }).isVisible()).toBe(false)
-      expect(await page.getByRole('button', { name: 'Create project', exact: true }).isEnabled()).toBe(false)
-      await page.getByRole('textbox', { name: 'Project name', exact: true }).fill(FIRST_PROJECT)
-      await page.getByRole('textbox', { name: 'One-line concept', exact: true }).fill('🌊'.repeat(3000))
-      await projectRequest(page, page.getByRole('button', { name: 'Create project', exact: true }), 'create')
-      await outline.waitFor()
-      await saveOutline(FIRST_OUTLINE)
+      await create(FIRST_PROJECT, 'A lighthouse keeper saves the village.')
+      await editDocument(FIRST_OUTLINE)
+      const script = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
+      await page.getByRole('button', { name: '人物小传.md' }).click()
+      await page.getByRole('complementary', { name: 'Character biography assistant' }).waitFor()
+      expect(await page.getByRole('button', { name: 'Apply to outline editor' }).count()).toBe(0)
+      await page.getByRole('button', { name: '故事大纲.md' }).click()
+      await page.getByRole('button', { name: 'Add episode', exact: true }).click()
+      const episodeDialog = page.getByRole('dialog', { name: 'Add episode' })
+      await episodeDialog.getByRole('textbox', { name: 'Episode title' }).fill('Episode 01: The signal')
+      await projectRequest(page, episodeDialog.getByRole('button', { name: 'Add episode' }), 'save')
+      await episodeDialog.waitFor({ state: 'hidden' })
+      await page.getByRole('button', { name: 'Edit document', exact: true }).waitFor()
+      await editDocument('Mira lights the beacon during a storm.')
+      await projectRequest(page, page.getByRole('button', { name: 'Confirm script complete' }), 'completeScript')
+      await page.getByText('Script confirmed. Production is ready.').waitFor()
+      await page.getByRole('button', { name: 'New production unit' }).click()
+      const unitDialog = page.getByRole('dialog', { name: 'New production unit' })
+      await unitDialog.getByRole('textbox', { name: 'Project name' }).fill('Episode 01 production')
+      await projectRequest(page, unitDialog.getByRole('button', { name: 'Create production unit' }), 'createProductionUnit')
+      await page.getByRole('heading', { name: 'Episode 01 production' }).waitFor()
+      await projectRequest(page, page.getByRole('button', { name: 'Add text' }), 'addCanvasNode')
+      const firstNode = page.locator('main article').first()
+      const nodeBounds = await firstNode.boundingBox()
+      expect(nodeBounds).not.toBeNull()
+      await page.mouse.move(nodeBounds!.x + 20, nodeBounds!.y + 20)
+      await page.mouse.down()
+      await page.mouse.move(nodeBounds!.x + 50, nodeBounds!.y + 40, { steps: 3 })
+      const [moveResponse] = await Promise.all([
+        page.waitForResponse(response => new URL(response.url()).pathname === '/api/studioProjects/moveCanvasNode'),
+        page.mouse.up(),
+      ])
+      expect(moveResponse.ok()).toBe(true)
+      const canvas = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
+      await Promise.all([
+        page.waitForResponse(response => new URL(response.url()).pathname === '/api/studioProjects/importProjectMedia'),
+        page.locator('input[type=file][accept^="image/png"]').setInputFiles({ name: 'beacon.png', mimeType: 'image/png', buffer: png }),
+      ])
+      await page.getByRole('button', { name: 'Project assets' }).click()
+      await page.getByRole('button', { name: /beacon.png/ }).locator('img').waitFor()
+      await page.getByRole('button', { name: /beacon.png/ }).click()
+      await page.getByRole('dialog', { name: 'beacon.png' }).getByRole('img', { name: 'beacon.png' }).waitFor()
+      const assets = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
+      await page.getByRole('dialog', { name: 'beacon.png' }).getByRole('button', { name: 'Cancel' }).click()
+      const projectDb = join(scaffold.workspaceCwd, FIRST_PROJECT, 'project.sqlite')
+      const db = new DatabaseSync(projectDb, { readOnly: true })
+      expect(db.prepare('SELECT count(*) AS count FROM studio_script_documents').get()?.count).toBe(3)
+      expect(db.prepare('SELECT count(*) AS count FROM studio_production_units').get()?.count).toBe(1)
+      expect(db.prepare('SELECT count(*) AS count FROM studio_media_assets').get()?.count).toBe(1)
+      db.close()
+      expect(persistedProjects(scaffold.harnessHome)).toEqual([{ name: FIRST_PROJECT, outline: FIRST_OUTLINE, archived: 0 }])
       await allProjects()
-      const firstCard = page.getByRole('article', { name: FIRST_PROJECT, exact: true })
-      const coverBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
-      await firstCard.getByLabel('Upload cover', { exact: true }).setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: coverBytes })
-      const cover = firstCard.getByRole('img', { name: `Cover for ${FIRST_PROJECT}` })
-      await cover.waitFor()
-      expect(await cover.getAttribute('src')).toBe(`data:image/png;base64,${coverBytes.toString('base64')}`)
-      await firstCard.getByLabel('Replace cover', { exact: true }).setInputFiles({ name: 'replacement.png', mimeType: 'image/png', buffer: coverBytes })
-      await expect.poll(async () => {
-        const db = new DatabaseSync(join(scaffold.harnessHome, 'multica/studio.sqlite'), { readOnly: true })
-        try { return db.prepare('SELECT revision FROM project_covers').get()?.revision }
-        finally { db.close() }
-      }, UI_WAIT).toBe(2)
-      await createProject(SECOND_PROJECT, 'A seed can change a desert.')
-      await saveOutline(SECOND_OUTLINE)
-      await allProjects()
-      await openProject(FIRST_PROJECT, FIRST_OUTLINE)
-
-      const reloadWarnings = tripwire.warnings.length
-      await page.reload({ waitUntil: 'load' })
-      await comics.click()
-      await page.getByRole('heading', { name: 'All projects', exact: true }).waitFor()
-      expect(await page.getByRole('img', { name: `Cover for ${FIRST_PROJECT}` }).getAttribute('src')).toBe(`data:image/png;base64,${coverBytes.toString('base64')}`)
-      await openProject(SECOND_PROJECT, SECOND_OUTLINE)
-      await allProjects()
-      await openProject(FIRST_PROJECT, FIRST_OUTLINE)
-      acknowledgeReloadConnectionLoss(tripwire, reloadWarnings)
-
-      await expect.poll(() => page.getByRole('textbox', { name: 'Request for the professional assistant', exact: true }).isEditable(), UI_WAIT).toBe(true)
-      await projectRequest(page, page.getByRole('button', { name: 'Submit for review', exact: true }), 'submitReview')
-      await page.getByRole('button', { name: 'Awaiting review', exact: true }).click()
-      await page.getByRole('button', { name: /Lighthouse Keepers.*Story outline/s }).click()
-      await page.getByRole('textbox', { name: 'Review comment', exact: true }).fill('Ready for storyboard planning.')
-      await projectRequest(page, page.getByRole('button', { name: 'Approve this version', exact: true }), 'decideReview')
-      await expect.poll(() => page.getByRole('button', { name: 'Approve this version', exact: true }).isEnabled(), UI_WAIT).toBe(false)
-      const reviewed = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
-      await page.getByRole('button', { name: 'Back to workspace', exact: true }).click()
-      const editable = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
-      await page.getByRole('button', { name: 'Project settings', exact: true }).click()
-      await projectRequest(page, page.getByRole('button', { name: 'Archive project', exact: true }), 'setArchived')
-      await allProjects()
-      await page.getByRole('article', { name: SECOND_PROJECT, exact: true }).waitFor()
-      await expect.poll(() => page.getByRole('article', { name: FIRST_PROJECT, exact: true }).count(), UI_WAIT).toBe(0)
-      await page.getByRole('button', { name: 'Archived', exact: true }).click()
-      await openProject(FIRST_PROJECT, FIRST_OUTLINE)
-      await expect.poll(() => outline.isEditable(), UI_WAIT).toBe(false)
-      await expect.poll(() => save.isEnabled(), UI_WAIT).toBe(false)
-      const archived = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
-
-      await page.getByRole('button', { name: 'Project settings', exact: true }).click()
-      await projectRequest(page, page.getByRole('button', { name: 'Restore project', exact: true }), 'setArchived')
-      await page.getByRole('button', { name: 'Story outline', exact: true }).click()
-      await expect.poll(() => outline.isEditable(), UI_WAIT).toBe(true)
-      const restoredOutline = `${FIRST_OUTLINE} The lantern shines again.`
-      await saveOutline(restoredOutline)
-      await allProjects()
-      await page.getByRole('button', { name: 'Active', exact: true }).click()
-      await openProject(FIRST_PROJECT, restoredOutline)
-      await allProjects()
-      await openProject(SECOND_PROJECT, SECOND_OUTLINE)
-
+      await create(SECOND_PROJECT, 'A courier crosses the desert.')
+      await editDocument(SECOND_OUTLINE)
       expect(persistedProjects(scaffold.harnessHome)).toEqual([
         { name: SECOND_PROJECT, outline: SECOND_OUTLINE, archived: 0 },
-        { name: FIRST_PROJECT, outline: restoredOutline, archived: 0 },
+        { name: FIRST_PROJECT, outline: FIRST_OUTLINE, archived: 0 },
       ])
-      expect(scaffold.ctx.sessions.list()).toEqual([])
-      expect(sessionEvents).toEqual([])
+      const warningStart = tripwire.warnings.length
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('navigation', { name: 'Global panels' }).getByRole('button', { name: 'Comics', exact: true }).click()
+      await page.getByRole('article', { name: FIRST_PROJECT, exact: true }).getByRole('button', { name: 'Open project' }).click()
+      await page.getByRole('button', { name: 'Episode 01 production' }).click()
+      await page.getByText('Mira lights the beacon during a storm.').waitFor()
+      await page.getByRole('button', { name: 'Project assets' }).click()
+      await page.getByRole('button', { name: /beacon.png/ }).waitFor()
+      acknowledgeReloadConnectionLoss(tripwire, warningStart)
       expect(tripwire.pageErrors).toEqual([])
       expect(tripwire.warnings).toEqual([])
       if (scaffold.mode === 'refresh') await mkdir(EXPECTED_DIR, { recursive: true })
       await compareOrRefreshGolden(join(EXPECTED_DIR, 'ui.expected.md'),
-        `## Simple creation\n\n${creation}\n\n## Saved project\n\n${editable}\n\n## Archived project\n\n${archived}\n\n## Human-approved outline\n\n${reviewed}`, scaffold.mode)
+        `## Script browser\n\n${script}\n\n## Production canvas\n\n${canvas}\n\n## Project assets\n\n${assets}`, scaffold.mode)
       await assertFixtureInventory(EXPECTED_DIR, ['ui.expected.md'])
     } catch (error) {
-      if (failurePage !== undefined) await saveFailureShot(failurePage, 'web-e2e-multica')
+      if (failurePage) await saveFailureShot(failurePage, 'web-e2e-multica-workspace')
       throw error
-    } finally {
-      await browser.close()
-    }
+    } finally { await browser.close() }
   } finally {
+    vi.useRealTimers()
+    pickerCapability.mockRestore()
     await scaffold.close()
   }
+})
+
+it('writes an assistant outline into the editor and restores its saved version after reload', async () => {
+  const scaffold = await launchWebScaffold()
+  try {
+    const requests: GenerateOptions[] = []
+    const generated = 'Premise: Mira inherits a lighthouse.\nConflict: The village wants it closed.\nEnding: She lights a safe route home.'
+    scaffold.ctx.llm.registerAdapter(['outline-fixture'], new class extends LlmAdapter {
+      override listModels(provider: string) { return Promise.resolve([{ provider, id: 'writer', name: 'Outline writer' }]) }
+      override resolveModel(provider: string, model: string) { return Promise.resolve({ provider, id: model, name: model }) }
+      override async *stream(request: GenerateOptions): AsyncIterable<StreamChunk> {
+        requests.push(request)
+        const id = ToolCallId('outline-proposal')
+        const args = JSON.stringify({ reply: 'The outline is ready to apply.', changes: [{ field: 'outline', value: generated }] })
+        yield { type: 'block-start', index: 0, blockType: 'tool-call' }
+        yield { type: 'tool-call-delta', index: 0, id, name: 'structured_output', argumentsDelta: args }
+        yield { type: 'block-end', index: 0, block: { type: 'tool-call', id, name: 'structured_output', arguments: args } }
+        yield { type: 'finish', reason: { kind: 'tool-calls' } }
+      }
+    }())
+    const role = scaffold.ctx.studioProjects.roles().find(role => role.role === 'planner')!
+    await scaffold.ctx.studioProjects.publishRole('planner', role.revision, { ...role.config, provider: 'outline-fixture', model: 'writer' })
+    const project = scaffold.ctx.studioProjects.create({ name: 'Outline workshop', concept: 'A lighthouse keeper saves her village.', sourceText: '', aspectRatio: '16:9', targetEpisodes: null, episodeDuration: null, outline: '', episodes: [] })
+    const browser = await chromium.launch()
+    try {
+      const page = await newEnglishPage(browser)
+      const tripwire = watchConsole(page)
+      await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+      await page.getByRole('navigation', { name: 'Global panels' }).getByRole('button', { name: 'Comics', exact: true }).click()
+      await page.getByRole('article', { name: project.name, exact: true }).getByRole('button', { name: 'Open project', exact: true }).click()
+      const planner = page.getByRole('complementary', { name: 'Planning assistant', exact: true })
+      const outline = page.getByRole('textbox', { name: 'Story outline', exact: true })
+      await outline.fill('Keep the village and the lighthouse.')
+      await planner.getByRole('button', { name: 'Develop current outline', exact: true }).click()
+      expect(requests).toHaveLength(0)
+      await planner.getByRole('button', { name: 'Send message', exact: true }).click()
+      await planner.getByText('The outline is ready to apply.', { exact: true }).waitFor()
+      expect(await outline.inputValue()).toBe('Keep the village and the lighthouse.')
+      expect(JSON.stringify(requests[0]?.messages)).toContain('Keep the village and the lighthouse.')
+      expect(JSON.stringify(requests[0]?.messages)).toContain('complete usable outline')
+      await planner.getByRole('button', { name: 'Apply to outline editor', exact: true }).click()
+      await expect.poll(() => outline.inputValue(), UI_WAIT).toBe(generated)
+      await planner.getByText('Story outline updated in the editor and saved as a draft version', { exact: true }).waitFor()
+      expect(scaffold.ctx.studioProjects.get(project.id)?.outline).toBe(generated)
+      expect(scaffold.ctx.studioProjects.reviews(project.id)).toEqual([])
+      await planner.getByRole('button', { name: 'Select model, current Outline writer', exact: true }).waitFor()
+      const result = await captureStableAria(page, WORKSPACE, scaffold.workspaceCwd)
+      const expected = fileURLToPath(new URL('./expected/multica-outline', import.meta.url))
+      if (scaffold.mode === 'refresh') await mkdir(expected, { recursive: true })
+      await compareOrRefreshGolden(join(expected, 'applied.expected.md'), result, scaffold.mode)
+      if (process.env.DSH_MULTICA_QA_DIR) {
+        await mkdir(process.env.DSH_MULTICA_QA_DIR, { recursive: true })
+        await page.screenshot({ path: join(process.env.DSH_MULTICA_QA_DIR, 'outline-applied.png'), fullPage: true })
+      }
+      const warningStart = tripwire.warnings.length
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('navigation', { name: 'Global panels' }).getByRole('button', { name: 'Comics', exact: true }).click()
+      await page.getByRole('article', { name: project.name, exact: true }).getByRole('button', { name: 'Open project', exact: true }).click()
+      await expect.poll(() => outline.inputValue(), UI_WAIT).toBe(generated)
+      acknowledgeReloadConnectionLoss(tripwire, warningStart)
+      expect(requests).toHaveLength(1)
+      expect(tripwire.warnings).toEqual([])
+      expect(tripwire.pageErrors).toEqual([])
+    } finally { await browser.close() }
+  } finally { await scaffold.close() }
 })

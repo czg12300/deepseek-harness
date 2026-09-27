@@ -1,5 +1,5 @@
 ---
-description: "Account connection and model selection in the optional third-party authorization plugins."
+description: "Account connection and model selection through third-party authorization plugins."
 kind: "package-reference"
 ---
 
@@ -24,6 +24,8 @@ Connect ChatGPT and Claude accounts without entering API keys in a second settin
 
 <a id="use-this-package"></a>
 ## Use this package
+
+Account login waits up to 15 minutes by default (`connectTimeoutMs`), matching the provider device-code window. A deadline reports `timeout`, independently of user cancellation. Failed settlement identifies `authorization` (including credential storage) or `activation` without exposing provider responses. ChatGPT retries reuse an existing grant to finish route activation.
 
 Use the sibling bundle over a local Web profile with credentials, authorization, settings, LLM, and subprocess providers. The controller rejects account management when the Web server binds all interfaces. `connectTimeoutMs`, `maxQueuedEvents`, `cwd`, `graceMs`, `statusTimeoutMs`, `outputBytes`, `databasePath`, `turnTimeoutMs`, `maxTurnEvents`, and `nativeConfigDir` are deployment configuration fields; their defaults and validation are declared in `src/index.ts`.
 

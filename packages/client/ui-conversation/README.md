@@ -20,6 +20,8 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+The controlled `multica.assistant.composer` entry shares the main input card, text spacing, toolbar and send/stop styles. Its caller owns text and task submission; the `multica.assistant.composer.model` child supplies model selection without creating a chat Session.
+
 -----
 
 <a id="conversation-assembly"></a>

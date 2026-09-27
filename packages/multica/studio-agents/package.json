@@ -67,6 +67,7 @@
     "@deepseek-ai/dsh-persona": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-home-paths": "workspace:^"
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@deepseek-ai/dsh-session-format-catalog": "workspace:^"
   }
 }

@@ -40,6 +40,10 @@ pnpm dsh web
 
 `pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
 
+On macOS or Linux, run [`./startup.sh`](startup.sh) from the checkout for dependency checks, installation, compilation, and Web startup in one command. Install Node.js 22.19+ (22.x) or 24+ with development headers, Python 3, make, and a C/C++ compiler first; the script reports missing tools and obtains the pinned pnpm through Corepack or npx when needed. Open the complete authenticated URL printed after startup and keep the terminal open; Ctrl+C stops the server. Use `./startup.sh --port 8080` to select a port or add `--no-open` to skip browser opening.
+
+The script defaults to the checkout's gitignored `.dsh-local/` for profiles, settings, and history, isolating it from desktop applications using `~/.dsh`. Set `DSH_HOME` explicitly to reuse another data directory. The startup output identifies both the source checkout and data directory.
+
 ## Community and support
 
 - Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).

@@ -26,6 +26,7 @@ import { IconDataOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ModelDirectoryState } from './directory.ts'
 import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
+import { PromptModelSelect, type PromptModelInjected } from './PromptModelSelect.tsx'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, zh, type ModelKey } from './locales.ts'
 
@@ -174,6 +175,14 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['slots', 'modelDirectories'], (scope: ClientContext) => {
     const models = scope.modelDirectories
     const sessions = scope.sessions
+    scope.slots.inject('multica.assistant.composer.model', () => scope.slots.register({
+      name: 'multica.assistant.composer.model',
+      locale: NS,
+      inject: (): PromptModelInjected => ({
+        hooks: { catalog: models.catalog.store },
+        load: () => { void models.catalog.load().catch(() => { /* The menu displays catalog errors. */ }) },
+      }),
+    }, PromptModelSelect))
     scope.slots.inject('conversation.input.model', () => scope.slots.register({
       name: 'conversation.input.model',
       locale: NS,

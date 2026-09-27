@@ -1,5 +1,5 @@
 ---
-description: "可选三方授权插件的账号连接、模型选择与使用说明。"
+description: "三方授权插件的账号连接、模型选择与使用说明。"
 kind: "package-reference"
 ---
 
@@ -24,6 +24,8 @@ kind: "package-reference"
 
 <a id="use-this-package"></a>
 ## 使用此包
+
+账号登录默认等待 15 分钟（`connectTimeoutMs`），与 Provider 的设备码有效期一致。到期报告 `timeout`，与用户取消分开。失败结果用 `authorization`（含凭证保存）或 `activation` 标识阶段，不暴露厂商响应。ChatGPT 重试会复用已保存的授权凭证来完成路由启用。
 
 在已配置凭证、授权、设置、LLM 和 subprocess Provider 的本机 Web Profile 上使用同组 bundle。Web 服务绑定所有网卡时，控制器拒绝账号管理。`connectTimeoutMs`、`maxQueuedEvents`、`cwd`、`graceMs`、`statusTimeoutMs`、`outputBytes`、`databasePath`、`turnTimeoutMs`、`maxTurnEvents` 和 `nativeConfigDir` 是部署配置字段；默认值及校验定义在 `src/index.ts`。
 

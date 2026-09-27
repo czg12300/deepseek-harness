@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
 import { createElement, useSyncExternalStore } from 'react'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { EpisodeId, Project, ProjectId, ProjectInput, ProjectSummary } from '@deepseek-ai/dsh-api-remotes/client'
+import type { EpisodeId, Project, ProjectId, ProjectInput, ProjectSummary, StudioFolderId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import { createMulticaStore, emptyInput } from '../src/client/drafts.ts'
 import { ProjectModel, type ProjectApi } from '../src/client/projects.ts'
 import { Workspace, type WorkspaceProps } from '../src/client/Workspace.tsx'
 import { studioFixture, workspace, role } from './studio-fixture.client.ts'
 import type { StudioProposal, StudioReview, StudioTaskView } from '@deepseek-ai/dsh-api-remotes/client'
-import type { StudioModel } from '../src/client/studio.ts'
+import { studioTargetKey, type StudioModel } from '../src/client/studio.ts'
+import type { PortableProjectActions } from '../src/client/ProjectLocation.tsx'
 import { MulticaIcon } from '../src/client/MulticaIcon.tsx'
 import { exportDraft, VersionPreview } from '../src/client/VersionPreview.tsx'
 import { en, zh, type MulticaKey } from '../src/client/locales.ts'
+import { ActorModel } from '../src/client/actors.ts'
+import { ProjectContentModel } from '../src/client/project-content.ts'
 
 const id = '00000000-0000-4000-8000-000000000001' as ProjectId
 const id2 = '00000000-0000-4000-8000-000000000002' as ProjectId
@@ -48,7 +52,7 @@ function selector<T>(source: ObservableSnapshot<T>) {
       ),
     )
 }
-const models: Array<ProjectModel | StudioModel> = []
+const models: Array<ProjectModel | StudioModel | ActorModel | ProjectContentModel> = []
 const restorers: (() => void)[] = []
 afterEach(() => {
   cleanup()
@@ -87,10 +91,31 @@ function fixture(values: Project[] = [], dictionary: Record<MulticaKey, string> 
   const store = createMulticaStore().create()
   const studio = studioFixture(store)
   models.push(studio.model)
+  const actorModel = new ActorModel({
+    libraries: vi.fn(async () => []), create: vi.fn(), list: vi.fn(async () => ({ actors: [], total: 0 })),
+    actor: vi.fn(async () => null), save: vi.fn(), export: vi.fn(), import: vi.fn(),
+  })
+  models.push(actorModel)
+  const contentModel = new ProjectContentModel({
+    documents: vi.fn(async () => []), saveDocument: vi.fn(), complete: vi.fn(async () => false),
+    confirm: vi.fn(), units: vi.fn(async () => []), createUnit: vi.fn(), nodes: vi.fn(async () => []),
+    addNode: vi.fn(), moveNode: vi.fn(), assets: vi.fn(async () => []), importMedia: vi.fn(), mediaData: vi.fn(async () => null),
+  })
+  models.push(contentModel)
   // These standard seats are unused by this root-scoped feature; the fixture binds only its declared sources.
   const props = {
     useStore: selector(store),
     useStudio: selector(studio.model.source),
+    useActors: selector(actorModel.source),
+    useContent: selector(contentModel.source),
+    contentActions: contentModel,
+    actorActions: {
+      load: () => actorModel.load(), select: id => actorModel.select(id),
+      filter: (search, period, region) => actorModel.filter(search, period, region),
+      more: () => actorModel.more(), create: name => actorModel.create(name),
+      actor: id => actorModel.actor(id), save: (id, input) => actorModel.save(id, input),
+      export: () => actorModel.export(), import: (dataUrl, merge) => actorModel.import(dataUrl, merge),
+    },
     studioActions: studio.actions,
     useProjects: selector(model.source),
     actions: store.actions,
@@ -102,6 +127,14 @@ function fixture(values: Project[] = [], dictionary: Record<MulticaKey, string> 
     save: (pid, draft, archived) => model.save(pid, draft, store.actions, archived),
     history: (pid: ProjectId) => model.history(pid),
     reportUnsaved: vi.fn(),
+    renderSlot: (_name, values) => {
+      const owner = values as unknown as SlotMap['multica.assistant.composer']['owner']
+      return <>
+        <textarea aria-label={owner.label} value={owner.value} disabled={owner.disabled}
+          onChange={(event) => { owner.onChange(event.target.value) }} />
+        <button disabled={owner.sendDisabled} onClick={owner.onSend}>{dictionary.send}</button>
+      </>
+    },
   } as WorkspaceProps
   return { props, store, api, model, studio }
 }
@@ -139,8 +172,101 @@ async function openCard(name: string): Promise<void> {
 }
 
 describe('Multica workspace', () => {
+  it('switches the project and actor catalogs as tabs in one workspace', async () => {
+    const { props } = fixture([], en)
+    render(<Workspace {...props} />)
+    expect(screen.getByRole('tab', { name: en.home }).getAttribute('aria-selected')).toBe('true')
+    const actorTab = screen.getByRole('tab', { name: en.actorLibrary })
+    fireEvent.click(actorTab)
+    expect(screen.getByRole('tab', { name: en.actorLibrary }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.queryByRole('button', { name: en.back })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: en.home }))
+    expect(screen.getByRole('tab', { name: en.home }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('textbox', { name: en.search })).toBeTruthy()
+  })
+
+  it.each(['header', 'card'])('opens a chosen project from the %s, preserves cancellation and reports failures', async (entry) => {
+    const { props } = fixture([], zh)
+    const pick = vi.fn<PortableProjectActions['pick']>().mockResolvedValue(null)
+    const open = vi.fn<PortableProjectActions['open']>().mockResolvedValue(undefined)
+    const portable: PortableProjectActions = {
+      pick, open, reveal: vi.fn(), prepare: vi.fn(), close: vi.fn(), forget: vi.fn(),
+      backup: vi.fn(), migrate: vi.fn(), autosave: vi.fn(), select: vi.fn(),
+    }
+    render(<Workspace {...props} portable={portable} />)
+    await screen.findByText(zh.empty)
+    expect(screen.queryByRole('button', { name: zh.review })).toBeNull()
+    expect(screen.queryByRole('button', { name: zh.agentConfig })).toBeNull()
+    expect(screen.queryByText(zh.openProjectDirectory)).toBeNull()
+    const buttons = screen.getAllByRole('button', { name: zh.openProject })
+    expect(buttons).toHaveLength(2)
+    const button = entry === 'header' ? buttons[0]!
+      : within(screen.getByRole('region', { name: zh.createOrOpenTitle })).getByRole('button', { name: zh.openProject })
+    fireEvent.click(button)
+    await waitFor(() => { expect(button).toHaveProperty('disabled', false) })
+    expect(open).not.toHaveBeenCalled()
+    pick.mockRejectedValueOnce(new Error('Picker unavailable'))
+    fireEvent.click(button)
+    expect((await screen.findByRole('alert')).textContent).toBe('Picker unavailable')
+    pick.mockResolvedValue('/drive/story')
+    open.mockRejectedValueOnce(new Error('Project database is missing'))
+    fireEvent.click(button)
+    expect((await screen.findByRole('alert')).textContent).toBe('Project database is missing')
+    fireEvent.click(button)
+    await waitFor(() => { expect(button).toHaveProperty('disabled', false) })
+    expect(open).toHaveBeenLastCalledWith('/drive/story')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
 
 
+  it('confirms catalog deletion, keeps failures retryable and disables repeated removal', async () => {
+    const { props, api } = fixture([project()], zh)
+    const folderId = '00000000-0000-4000-8000-000000000003' as StudioFolderId
+    api.folders = vi.fn(async () => [{ id: folderId, projectId: id, creationId: null, path: '/drive/rain', name: 'Rain', state: 'open' as const }])
+    const remove = vi.fn<PortableProjectActions['forget']>().mockRejectedValueOnce(new Error('Catalog unavailable'))
+    const portable: PortableProjectActions = {
+      pick: vi.fn(), open: vi.fn(), reveal: vi.fn(), prepare: vi.fn(), close: vi.fn(), forget: remove,
+      backup: vi.fn(), migrate: vi.fn(), autosave: vi.fn(), select: vi.fn(),
+    }
+    render(<Workspace {...props} portable={portable} />)
+    const card = await screen.findByRole('article', { name: 'Rain' })
+    fireEvent.click(within(card).getByRole('button', { name: '删除项目：Rain' }))
+    expect(remove).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog').textContent).toContain('不删除对应文件夹及作品内容')
+    fireEvent.click(within(screen.getByRole('dialog')).getByText(zh.cancel, { selector: 'button' }))
+    expect(remove).not.toHaveBeenCalled()
+    fireEvent.click(within(card).getByRole('button', { name: '删除项目：Rain' }))
+    fireEvent.click(screen.getByRole('button', { name: zh.confirmDeleteProject }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Catalog unavailable')
+    let finish!: () => void
+    remove.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve }))
+    fireEvent.click(screen.getByRole('button', { name: zh.confirmDeleteProject }))
+    expect(screen.getByRole('button', { name: zh.confirmDeleteProject })).toHaveProperty('disabled', true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    await act(async () => { finish() })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(remove).toHaveBeenLastCalledWith(folderId)
+  })
+
+  it('closes creation with the close button or Escape and preserves the draft for reopening', async () => {
+    const { props, api } = fixture()
+    render(<Workspace {...props} />)
+    fireEvent.click(screen.getAllByRole('button', { name: en.newProject })[0]!)
+    const dialog = screen.getByRole('dialog', { name: en.createTitle })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(within(dialog).queryByText(en.cancel)).toBeNull()
+    expect(within(dialog).queryByText(en.home)).toBeNull()
+    fireEvent.change(within(dialog).getByRole('textbox', { name: en.name }), { target: { value: 'A retained story' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: en.closeCreation }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('tab', { name: en.home }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: en.continueCreation }))
+    expect(screen.getByRole('textbox', { name: en.name })).toHaveProperty('value', 'A retained story')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(api.create).not.toHaveBeenCalled()
+  })
 
   it('creates manually with illustrated aspect choices and nullable scale, without adding episodes', async () => {
     const { props, api } = fixture()
@@ -294,8 +420,8 @@ describe('Multica workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: en.refresh }))
     await screen.findByRole('article', { name: 'Rain' })
     fireEvent.click(screen.getAllByRole('button', { name: en.newProject })[1]!)
-    fireEvent.click(screen.getByRole('button', { name: en.cancel }))
-    expect(screen.getByRole('heading', { name: en.home })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: en.closeCreation }))
+    expect(screen.getByRole('tab', { name: en.home }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('edits project specifications, discards explicitly, then saves and archives', async () => {
@@ -408,11 +534,11 @@ describe('Multica workspace', () => {
     await screen.findByRole<HTMLInputElement | HTMLTextAreaElement>('textbox', { name: en.outline })
     expect(store.getSnapshot().selected).toBe(id2)
     fireEvent.change(screen.getByRole('combobox', { name: en.selectProject }), { target: { value: 'new' } })
-    expect(screen.getByRole('heading', { name: en.createTitle })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: en.cancel }))
+    expect(screen.getByRole('dialog', { name: en.createTitle })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: en.closeCreation }))
     expect(store.getSnapshot().selected).toBe(id2)
     fireEvent.change(screen.getByRole('combobox', { name: en.selectProject }), { target: { value: 'all' } })
-    expect(screen.getByRole('heading', { name: en.home })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: en.home }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('renders the sidebar glyph as decorative content and exports complete local fields', async () => {
@@ -517,11 +643,69 @@ describe('Multica workspace', () => {
     expect(api.save).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: en.saveSettings }).hasAttribute('disabled')).toBe(true)
   })
-  it('requires explicit field selection and separate human review after an assistant response', async () => {
+  it('restores the latest successful model after remount and leaves an explicit draft choice in control', async () => {
+    const { props, studio, store } = fixture([project()])
+    const target = { kind: 'outline' as const, projectId: id }
+    const initial = workspace(target)
+    const task: StudioTaskView = {
+      id: '00000000-0000-4000-8000-000000000031' as StudioTaskView['id'],
+      requestId: '00000000-0000-4000-8000-000000000032' as StudioTaskView['requestId'],
+      workspaceId: initial.workspace.id, target, sessionId: initial.workspace.sessionId,
+      role: 'planner', roleRevision: 1, provider: 'connected', model: 'working', reasoningEffort: 'high', expectedRevision: 1,
+      prompt: 'Connection test', status: 'completed', reply: 'Connected', error: null,
+      createdAt: initial.workspace.createdAt, finishedAt: initial.workspace.createdAt,
+    }
+    initial.workspace.resolved = { provider: 'old-route', model: 'unavailable', skills: [], tools: [] }
+    initial.tasks = [task, { ...task, id: '00000000-0000-4000-8000-000000000033' as StudioTaskView['id'],
+      model: 'unsupported', status: 'failed', reply: '', error: 'Model unavailable' }]
+    vi.mocked(studio.api.open).mockResolvedValue(initial)
+    vi.mocked(studio.api.catalog).mockResolvedValue({ backendAvailable: true, enabledRoles: ['planner'], defaultModel: null, skills: [], tools: [] })
+    const renderComposer = vi.fn(props.renderSlot)
+    render(<Workspace {...props} renderSlot={renderComposer as unknown as WorkspaceProps['renderSlot']} />)
+    await openCard('Rain')
+    await screen.findByText('Connected')
+    expect(renderComposer).toHaveBeenLastCalledWith('multica.assistant.composer', expect.objectContaining({
+      selection: { provider: 'connected', model: 'working', reasoningEffort: 'high' },
+    }))
+    await act(async () => { store.actions.assistantModel(studioTargetKey(target), { provider: 'other', model: 'chosen' }) })
+    expect(renderComposer).toHaveBeenLastCalledWith('multica.assistant.composer', expect.objectContaining({
+      selection: { provider: 'other', model: 'chosen' },
+    }))
+  })
+
+  it('prepares outline requests without sending or replacing unsent text and uses the latest editor draft', async () => {
+    const { props, studio, store } = fixture([project()])
+    vi.mocked(studio.api.catalog).mockResolvedValue({ backendAvailable: true, enabledRoles: ['planner'], defaultModel: null, skills: [], tools: [] })
+    render(<Workspace {...props} />)
+    await openCard('Rain')
+    await screen.findByText(en.outlineEmptyDialogue)
+    expect(screen.getByRole('button', { name: en.outlineImprove })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.outlineCheck })).toHaveProperty('disabled', true)
+    fireEvent.click(screen.getByRole('button', { name: en.outlineGenerate }))
+    expect(screen.getByRole('textbox', { name: en.assistantMessage })).toHaveProperty('value', en.outlineGeneratePrompt)
+    expect(studio.api.start).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: en.outlineGenerate })).toHaveProperty('disabled', true)
+    fireEvent.change(screen.getByRole('textbox', { name: en.assistantMessage }), { target: { value: '' } })
+    fireEvent.change(screen.getByRole('textbox', { name: en.outline }), { target: { value: 'An unsaved new ending' } })
+    fireEvent.click(screen.getByRole('button', { name: en.outlineImprove }))
+    expect(screen.getByRole('textbox', { name: en.assistantMessage })).toHaveProperty('value', en.outlineImprovePrompt)
+    fireEvent.change(screen.getByRole('textbox', { name: en.assistantMessage }), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: en.outlineCheck }))
+    expect(screen.getByRole('textbox', { name: en.assistantMessage })).toHaveProperty('value', en.outlineCheckPrompt)
+    fireEvent.click(screen.getByRole('button', { name: en.send }))
+    await screen.findByText(en.assistantFailure)
+    const request = vi.mocked(studio.api.start).mock.calls[0]![0]
+    expect(request.prompt).toBe(en.outlineCheckPrompt)
+    expect(request.input.outline).toBe('An unsaved new ending')
+    expect(store.getSnapshot().drafts[id]?.input.outline).toBe('An unsaved new ending')
+  })
+
+  it('applies a complete outline to the editor with one explicit action and keeps review separate', async () => {
     const saved = project({ outline: 'Original outline' })
     const { props, studio, api, store } = fixture([saved])
     const target = { kind: 'outline' as const, projectId: id }
     const initial = workspace(target)
+    initial.workspace.resolved = { provider: 'configured', model: 'text', reasoningEffort: 'high', skills: [], tools: [] }
     const task: StudioTaskView = {
       id: '00000000-0000-4000-8000-000000000031' as StudioTaskView['id'],
       requestId: '00000000-0000-4000-8000-000000000032' as StudioTaskView['requestId'],
@@ -541,19 +725,32 @@ describe('Multica workspace', () => {
     vi.mocked(studio.api.workspace).mockResolvedValue({ ...initial, tasks: [task], proposals: [proposal] })
     render(<Workspace {...props} />)
     await openCard('Rain')
-    await screen.findByText(en.noDialogue)
+    await screen.findByText(en.outlineEmptyDialogue)
     expect(studio.api.start).not.toHaveBeenCalled()
     fireEvent.change(screen.getByRole('textbox', { name: en.assistantMessage }), { target: { value: task.prompt } })
     fireEvent.click(screen.getByRole('button', { name: en.send }))
     const card = await screen.findByRole('region', { name: en.proposal })
+    expect(studio.api.start).toHaveBeenCalledWith(expect.objectContaining({
+      modelSelection: { provider: 'configured', model: 'text', reasoningEffort: 'high' },
+    }))
     expect(screen.getByRole('textbox', { name: en.outline })).toHaveProperty('value', 'Original outline')
-    expect(within(card).getByRole('button', { name: en.applySelected })).toHaveProperty('disabled', true)
+    expect(within(card).getByRole('button', { name: en.outlineApply })).toHaveProperty('disabled', false)
     expect(studio.api.apply).not.toHaveBeenCalled()
+    await act(async () => { studio.model.source.update((state) => {
+      state.byId[initial.workspace.id]!.view!.lockedFields = ['outline']
+    }) })
+    expect(within(card).getByRole('button', { name: en.outlineApply })).toHaveProperty('disabled', true)
+    await act(async () => { studio.model.source.update((state) => {
+      state.byId[initial.workspace.id]!.view!.lockedFields = []
+    }) })
+    vi.mocked(studio.api.apply).mockResolvedValueOnce({ status: 'conflict', project: saved, creation: null, fields: ['outline'] })
+    fireEvent.click(within(card).getByRole('button', { name: en.outlineApply }))
+    await screen.findByText(en.proposalConflict)
+    expect(screen.getByRole('textbox', { name: en.outline })).toHaveProperty('value', 'Original outline')
     const accepted = project({ revision: 2, outline: 'Proposed ending' })
     vi.mocked(studio.api.apply).mockResolvedValue({ status: 'applied', project: accepted, creation: null, input: { ...emptyInput(), name: saved.name, concept: saved.concept, outline: accepted.outline }, proposal: { ...proposal, applied: ['outline'] } })
     vi.mocked(studio.api.workspace).mockResolvedValue({ ...initial, tasks: [task], proposals: [{ ...proposal, applied: ['outline'] }] })
-    fireEvent.click(within(card).getByRole('checkbox', { name: en.outline }))
-    fireEvent.click(within(card).getByRole('button', { name: en.applySelected }))
+    fireEvent.click(within(card).getByRole('button', { name: en.outlineApply }))
     await screen.findByDisplayValue('Proposed ending')
     expect(studio.api.apply).toHaveBeenCalledWith(expect.objectContaining({ fields: ['outline'], expectedRevision: 1 }))
     expect(studio.api.submit).not.toHaveBeenCalled()
@@ -568,17 +765,18 @@ describe('Multica workspace', () => {
   })
 
   it('retains role edits until explicit publication and keeps unavailable dependencies visible', async () => {
-    const { props, studio, store } = fixture()
+    const { props, studio, store } = fixture([project()])
     vi.mocked(studio.api.catalog).mockResolvedValue({ backendAvailable: true, enabledRoles: ['planner'], defaultModel: { provider: 'configured', model: 'text' }, skills: [], tools: [] })
     vi.mocked(studio.api.roles).mockResolvedValue([{ ...role, config: { ...role.config, skills: ['removed-skill'] } }])
     render(<Workspace {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: en.agentConfig }))
+    await openCard('Rain')
+    fireEvent.click(within(screen.getByRole('navigation', { name: en.planning })).getByRole('button', { name: en.agentConfig }))
     const persona = await screen.findByRole('textbox', { name: en.persona })
     expect(screen.getByRole('checkbox', { name: 'removed-skill' })).toHaveProperty('checked', true)
     fireEvent.change(persona, { target: { value: 'Plan a quiet mystery.' } })
     expect(studio.api.publishRole).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: en.backToWorkspace }))
-    fireEvent.click(screen.getByRole('button', { name: en.agentConfig }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: en.planning })).getByRole('button', { name: en.agentConfig }))
     expect(screen.getByRole('textbox', { name: en.persona })).toHaveProperty('value', 'Plan a quiet mystery.')
     vi.mocked(studio.api.publishRole).mockImplementation(async (id, revision, config) => ({
       role: id, revision: revision + 1, config, createdAt: role.createdAt,

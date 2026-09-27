@@ -88,10 +88,15 @@ export interface StudioRoleRevision {
   createdAt: string
 }
 
-/** Effective dependencies frozen before the first task of a workspace. */
-export interface StudioResolvedRole {
+/** Provider route and adapter-owned reasoning effort selected for a task. */
+export interface StudioModelSelection {
   provider: string
   model: string
+  reasoningEffort?: string | undefined
+}
+
+/** Effective dependencies frozen before execution. */
+export interface StudioResolvedRole extends StudioModelSelection {
   skills: Array<{ name: string; content: string }>
   tools: string[]
 }
@@ -114,6 +119,7 @@ export interface StudioTaskRequest {
   expectedRevision: number | null
   input: ProjectInput
   prompt: string
+  modelSelection?: StudioModelSelection | undefined
 }
 
 /** Durable execution record; a process restart interrupts unfinished work rather than silently repeating it. */
@@ -128,6 +134,7 @@ export interface StudioTask {
   expectedRevision: number | null
   input: ProjectInput
   prompt: string
+  modelSelection?: StudioModelSelection | undefined
   reviews: StudioReview[]
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
   reply: string
@@ -147,6 +154,7 @@ export interface StudioTaskView {
   roleRevision: number
   provider: string
   model: string
+  reasoningEffort?: string
   expectedRevision: number | null
   prompt: string
   status: StudioTask['status']
@@ -212,10 +220,16 @@ export interface StudioWorkspaceView {
 
 /** Trusted execution provider; professional models never receive these host callbacks. */
 export interface StudioAssistantBackend {
+  /** Mount project-owned Session storage without creating or driving an Agent. */
+  openProject?(this: void, root: string, check: () => void): void
+  /** Copy complete legacy histories before the destination project registers its routes. */
+  copySessions?(this: void, ids: SessionId[], root: string, check: () => void): Promise<void>
+  /** Drain and release every runtime resource under this project directory. */
+  closeProject?(this: void, root: string): Promise<void>
   /** Read actual registered skill/tool choices without invoking a model. */
   catalog(this: void): Promise<StudioAssistantCatalog>
   /** Resolve actual model, skill bodies, and controlled tool selections before persisting a task. */
-  resolve(this: void, role: StudioRoleRevision): Promise<StudioResolvedRole>
+  resolve(this: void, role: StudioRoleRevision, selection?: StudioModelSelection): Promise<StudioResolvedRole>
   /** Execute the frozen task and return only a logged response or proposal. */
   execute(this: void, task: StudioTask): Promise<StudioAssistantResult>
   /** Request cancellation and wait until the owned task has settled. */
@@ -226,7 +240,7 @@ export interface StudioAssistantBackend {
 export interface StudioAssistantCatalog {
   backendAvailable: boolean
   enabledRoles: StudioRoleId[]
-  defaultModel: { provider: string; model: string } | null
+  defaultModel: StudioModelSelection | null
   skills: Array<{ name: string; description: string }>
   tools: Array<{ name: string; description: string; source: 'builtin' | 'mcp' }>
 }

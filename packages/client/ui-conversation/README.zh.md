@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+受控的 `multica.assistant.composer` 入口复用主输入框的卡片、文本间距、工具栏和发送/停止按钮样式。调用方拥有文本和任务提交；`multica.assistant.composer.model` 子插槽提供模型选择，不创建聊天 Session。
+
 -----
 
 <a id="conversation-assembly"></a>

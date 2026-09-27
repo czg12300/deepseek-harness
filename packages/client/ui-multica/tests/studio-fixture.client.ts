@@ -82,11 +82,11 @@ export function studioFixture(store?: ReturnType<ReturnType<typeof createMultica
     open: target => model.open(target),
     refresh: id => model.refresh(id),
     selectVersion: (target, id) => model.selectVersion(target, id),
-    send: (id, revision, input, prompt) =>
+    send: (id, revision, input, prompt, modelSelection) =>
       model.send(id, revision, input, prompt, () => {
         const target = model.source.getSnapshot().byId[id]?.view?.workspace.target
         if (target) store?.actions.promptSubmitted(studioTargetKey(target), prompt)
-      }),
+      }, modelSelection),
     retry: id => model.retry(id, () => {}),
     abandon: (id) => {
       model.abandon(id)

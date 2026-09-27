@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/multica.md
-multica.md: a0590bcd333d20e5a2dd5debfdef28068363561b
-multica.zh.md: 8bbbe80f4ff42b1bedc58114922ea08703c9de09
+multica.md: e4298895872d4c89985b17754550f9dfb251288b
+multica.zh.md: 4453f0f9e0684d6e53313718fa03fea04dcbf3d8

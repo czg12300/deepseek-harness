@@ -18,11 +18,20 @@ Proposal application compares selected fields against both their local before-va
 
 This extends the [project revision decision](2026-09-10-multica-project-revisions.md) without moving project state into Session history. The database owns edits and review decisions; the Session owns the exact model-visible input and output.
 
+The authoring input reuses the conversation card and model menu through slots. Each task can select a provider, model and reasoning effort while retaining its workspace role, skills and controlled tools. The selection is immutable task input, so an uncertain retry cannot adopt a later UI choice. This avoids changing a global default or creating an unrelated ordinary chat Agent merely to configure a professional task.
+
+
+An advertised model can still be unavailable to the connected account. An explicit draft choice takes precedence; otherwise the authoring panel restores the last completed task’s model and effort on reopen. Failed tasks remain visible but never become the recovered default. This preserves a verified working route without silently substituting a model during execution.
+
+Each professional serves the current authoring target. Outline instructions require a complete editable result instead of a chat-only deliverable, using the captured local draft rather than only saved content. A single-field outline proposal has an explicit apply action; multi-field proposals retain field selection. Both use the same atomic application checks, so convenient editing cannot bypass manual-change or lock protection. Page shortcuts only prepare a prompt and preserve unsent requests.
+
 ## Alternatives considered
 
 **Persona-only restrictions.** Instructions cannot prevent inherited tools from writing. Scoped registration, execution guards and separate human APIs enforce the supported operations.
 
 **Apply model patches directly.** A late response may reference an older local draft even when its saved revision is unchanged. Immutable field comparisons preserve both local and persisted edits.
+
+Directory portability and project-local Session placement are owned by the [portable project decision](2026-09-17-portable-multica-projects.md).
 
 ## Consequences
 

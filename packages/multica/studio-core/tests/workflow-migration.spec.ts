@@ -90,7 +90,12 @@ it('adds cover storage to schema 2 without changing project or assistant records
   const path = join(home, 'multica/studio.sqlite')
   const legacy = new DatabaseSync(path)
   try {
-    legacy.exec('DROP TABLE project_covers; PRAGMA user_version = 2')
+    legacy.exec(`
+      DROP TABLE studio_media_assets; DROP TABLE studio_canvas_nodes; DROP TABLE studio_production_units;
+      DROP TABLE studio_script_completion; DROP TABLE studio_script_documents;
+      DROP TABLE studio_project_identity; DROP TABLE studio_locations; DROP TABLE studio_edit_drafts;
+      DROP TABLE project_covers; PRAGMA user_version = 2;
+    `)
   } finally { legacy.close() }
   const migrated = new Context()
   contexts.push(migrated)

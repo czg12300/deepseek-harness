@@ -92,6 +92,12 @@
     - id: studio-agents
       name: '@deepseek-ai/dsh-studio-agents'
 
+    - id: third-party-authorization
+      name: '@deepseek-ai/dsh-authorization'
+
+    - id: third-party-auth
+      name: '@deepseek-ai/dsh-third-party-auth'
+
     - id: session-reference
       name: '@deepseek-ai/dsh-session-reference'
 
@@ -259,6 +265,9 @@
 
     - id: ui-settings-models
       name: '@deepseek-ai/dsh-client-ui-settings-models'
+
+    - id: ui-third-party-auth
+      name: '@deepseek-ai/dsh-client-ui-third-party-auth'
 
     - id: ui-settings-plugin-inventory
       name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'

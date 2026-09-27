@@ -182,6 +182,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     }
     /** Plan control inside the composer tool row. */
     'conversation.input.plan': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+    /** Replaces the professional model menu; receives the draft selection and update callback. No entry hides model controls. */
+    'multica.assistant.composer.model': {
+      kind: 'single'
+      scope: 'root'
+      owner: {
+        locked: boolean
+        selection: import('@deepseek-ai/dsh-api-remotes/client').ModelSelection | null
+        onSelect: (selection: import('@deepseek-ai/dsh-api-remotes/client').ModelSelection) => void
+      }
+    }
     /** Model selector inside the composer tool row. */
     'conversation.input.model': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
   }

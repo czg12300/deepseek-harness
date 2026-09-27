@@ -1,5 +1,5 @@
 ---
-description: "Account connection and model selection in the optional third-party authorization plugins."
+description: "Account connection and model selection through third-party authorization plugins."
 kind: "package-bundle"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Add optional ChatGPT and Claude account connections to a Web profile. The layer mounts the authorization service, account runtime, and settings UI. No existing base, Web bundle, or preset file is edited. This checkout-only bundle is not a published registry release.
+Compose ChatGPT and Claude account connections for custom profiles that do not already include them. The layer mounts the authorization service, account runtime, and settings UI. The default Web bundle includes these plugins directly. This checkout-only bundle is not a published registry release.
 
 ## Table of Contents
 
@@ -25,12 +25,12 @@ Add optional ChatGPT and Claude account connections to a Web profile. The layer 
 <a id="use-this-package"></a>
 ## Use this package
 
-The entry is the package-owned `cordis.patch.yml` applied above the Web profile. Build the workspace before launching the UI so all existing client artifacts are available. Registry installation and Desktop loading are not yet validated.
+The entry for custom profiles is the package-owned `cordis.patch.yml`. Do not add this layer to the default Web profile: it already mounts the same services. Build the workspace before launching the UI so all existing client artifacts are available. Registry installation and Desktop loading are not yet validated.
 
-This source validation entry was launched with an isolated data directory; run it from the repository root.
+Start the default Web profile with an isolated data directory from the repository root:
 
 ```sh
-DSH_HOME="$PWD/.artifacts/third-party-auth-preview/home" pnpm dsh --profile web --patch packages/third-party-auth/third-party-auth-bundle/cordis.patch.yml --port 0 --no-open
+DSH_HOME="$PWD/.artifacts/third-party-auth-preview/home" pnpm dsh --profile web --port 0 --no-open
 ```
 
 -----

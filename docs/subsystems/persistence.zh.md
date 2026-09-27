@@ -6,6 +6,8 @@
 
 该 seam 是一个[能力 seam](../../.agents/notes/implemented/architecture/2026-06-13-capability-seams.zh.md)：一个抽象服务（[dsh-session-persistence](../../packages/session/session-persistence)，`ctx.sessionPersistence`）在现有 `SessionEvent` 上暴露 `create`/`open`/`stat`/`list`——**没有平行的持久化事件类型**——其中 `create` 与 `open` 返回逐会话的 `SessionHandle`（`read`/`append`/`flush`/`close`），它承载全部日志访问与单写者所有权。仓库随产品交付 [dsh-session-persistence-jsonl](../../packages/session/session-persistence-jsonl) 作为其 provider；仓库外 provider 可以实现同一服务约定。见[基于句柄的持久化 Agent Note](../../.agents/notes/implemented/architecture/2026-08-27-handle-based-session-persistence.zh.md)与 [session-persistence Agent Note](../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.zh.md)。
 
+`SessionPersistenceStore` 将 `owns(SessionId)` 判定函数与标准持久化操作组合起来。支持 `registerStore()` 的提供方把这些身份路由到已挂载项目存储，并在列表和 flush 中包含它。所有者在句柄关闭前保持注册；不支持的提供方拒绝注册。
+
 ## `SessionHandle`——通向已存储会话的一条打开通道
 
 每一次日志读写都经由句柄流动，绝不经由按 id 寻址的服务方法：句柄是跨进程写租约把守的唯一入口。读取会返回调用方独占的外层 slice，以及由生产者建立的 event value 别名状态。一种句柄类型同时服务两种访问——在 `read` 句柄上执行修改是运行时的 `SessionReadOnlyError`，而非类型层面的拆分——而进程内单写者所有权使得在已有活跃持有者时第二次 `open(id, 'write')` 以 `SessionAlreadyOwnedError` 拒绝。
@@ -349,6 +351,14 @@ Visibility: a created session is observable through `stat`/`list`/`open` in this
 Freshness: once an `append` or `flush` resolves, reads started afterwards on this backend instance observe at least that prefix.
 
 ```ts cordis-catalog
+/**
+ * Route explicitly owned sessions to a mounted project store. Backends without
+ * routing support reject; callers must keep the registration until handles close.
+ * @param store - project-owned persistence and identity predicate.
+ * @returns disposer removing the route after its owner has drained sessions.
+ */
+registerStore(store: SessionPersistenceStore): () => Promise<void>
+
 /**
  * Create a new stored session and take its write ownership.
  * @param header - the immutable header (id, version, cwd, lineage) to store.

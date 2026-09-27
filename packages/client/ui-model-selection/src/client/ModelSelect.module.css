@@ -75,12 +75,12 @@
    container as PermissionSelect's 460px cut (InputBar .row); the full name
    stays reachable through the trigger's title and aria-label. */
 @container (max-width: 360px) {
-  .triggerIcon {
+  .root:not(.standalone) .triggerIcon {
     display: block;
   }
 
-  .triggerLabel,
-  .triggerEffort {
+  .root:not(.standalone) .triggerLabel,
+  .root:not(.standalone) .triggerEffort {
     display: none;
   }
 }
@@ -290,4 +290,9 @@
 .cellChevron {
   flex: 0 0 auto;
   color: var(--dsw-alias-label-tertiary);
+}
+
+/* Task composers reserve the row for model selection and submission. */
+.standalone .trigger {
+  max-width: calc(100cqw - 64px);
 }

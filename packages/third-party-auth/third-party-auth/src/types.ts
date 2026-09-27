@@ -56,7 +56,7 @@ export type ConnectEvent =
   | { kind: 'notice'; notice: AuthorizationNotice }
   | { kind: 'prompt'; id: PromptId; prompt: AccountPrompt }
   | { kind: 'withdrawn'; id: PromptId }
-  | { kind: 'settled'; status: 'connected' | 'cancelled' | 'failed' }
+  | { kind: 'settled'; status: 'connected' | 'cancelled' | 'failed'; reason?: 'authorization' | 'activation' | 'timeout' }
 /** Interactions scoped to the caller who started the login. */
 export interface ConnectInteraction {
   signal: AbortSignal

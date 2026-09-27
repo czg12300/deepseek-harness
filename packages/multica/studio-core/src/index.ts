@@ -1,18 +1,17 @@
 /** Multica host project storage; creation and editing have no agent or Session side effects. */
 
-import { randomUUID } from 'node:crypto'
-import { isAbsolute, relative, resolve, sep } from 'node:path'
-import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
-import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
-import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { ProjectStore } from './project-store.ts'
+import { ProjectFolders } from './project-folders.ts'
+import { ActorLibraries } from './actor-libraries.ts'
+import { ProjectWorkspace } from './project-workspace.ts'
+import { canOpenNativePath, revealNativePath } from '@deepseek-ai/dsh-native-command'
+import { copyProjectRecords, copyCreationRecords } from './project-migration.ts'
+import { creationInputSchema, targetSchema } from './workflow-schema.ts'
+import type { Actor, ActorId, ActorImportResult, ActorInput, ActorLibraryId, ActorLibrarySummary, ActorPage, CanvasNode, CanvasNodeId, EpisodeId, ProductionUnit, ProductionUnitId, ProjectMediaAsset, ProjectMediaId, ScriptDocument, ScriptDocumentId, StudioFolder, StudioFolderId } from './types.ts'
+import type { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import { z } from 'zod'
-import { deepFreeze } from '@deepseek-ai/dsh-util-values'
-import { openDatabase, transaction } from './database.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { roleConfigSchema, roleIdSchema, taskRequestSchema, targetFields } from './workflow-schema.ts'
-import { StudioWorkflowStore } from './workflow-store.ts'
 import type {
   StudioRoleConfig,
   StudioRoleId,
@@ -40,7 +39,7 @@ import type {
   StudioCreationSummary,
   StudioCreationSaveResult,
 } from './workflow-types.ts'
-import { projectIdSchema, projectInputSchema, projectSchema, revisionSchema } from './validation.ts'
+import { projectIdSchema, revisionSchema } from './validation.ts'
 import type { Project, ProjectId, ProjectInput, ProjectSummary, ProjectCover, SaveResult } from './types.ts'
 
 export type * from './types.ts'
@@ -73,12 +72,23 @@ export interface Config {
   }
 }
 
-/** Revisioned projects and permanent episode identities exposed as studioProjects Remote methods. */
+/** Deployment settings after the service's schema applies validated defaults. */
+export type ResolvedConfig = Config & {
+  maxCoverBytes: number
+  databasePath: string
+  busyTimeoutMs: number
+  assistantDefaults: { maxTokens: number; maxSteps: number; timeoutMs: number }
+}
+
+
+/** Project operations routed by stable identities to independently portable folders. */
 export class StudioProjects extends TypertRemoteService {
   static Config: Schema<
     Config,
     Config & {
-      maxCoverBytes: number; databasePath: string; busyTimeoutMs: number
+      maxCoverBytes: number
+      databasePath: string
+      busyTimeoutMs: number
       assistantDefaults: { maxTokens: number; maxSteps: number; timeoutMs: number }
     }
   > = Schema.object({
@@ -93,45 +103,477 @@ export class StudioProjects extends TypertRemoteService {
     }).default({ maxTokens: 8192, maxSteps: 8, timeoutMs: 180000 }),
   })
 
-  private readonly maxCoverBytes: number
-  private readonly db: DatabaseSync
-  private readonly workflow: StudioWorkflowStore
+  private readonly legacy: ProjectStore
+  private readonly folders: ProjectFolders
+  private readonly actors: ActorLibraries
   private backend: StudioAssistantBackend | undefined
-  private readonly pending = new Map<StudioTaskId, { backend: StudioAssistantBackend; done: Promise<StudioTask> }>()
   private closing = false
+  private readonly backendDisposers = new Map<ProjectStore, () => void>()
+  private readonly sessionLocations = new Map<SessionId, { root: string; check: () => void; store: ProjectStore }>()
 
   constructor(ctx: Context, config: Config = {}) {
-    const parsed = StudioProjects.Config(config)
-    const home = resolveDshHome(parsed.dshHome)
-    const path = resolve(home, parsed.databasePath)
-    const child = relative(home, path)
-    if (child === '' || child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child)) {
-      throw new Error('Multica databasePath must name a file inside dshHome')
-    }
     super(ctx, 'studioProjects')
-    this.maxCoverBytes = parsed.maxCoverBytes
-    this.db = openDatabase(path, parsed.busyTimeoutMs)
-    ctx.effect(() => () => {
-      this.db.close()
-    })
-    this.workflow = new StudioWorkflowStore(this.db, {
-      get: id => this.get(id),
-      create: input => this.createProject(input),
-      revision: (id, revision) => {
-        const row = this.db.prepare('SELECT * FROM project_revisions WHERE project_id = ? AND revision = ?').get(id, revision)
-        return row ? this.decode(row) : null
-      },
-      append: (current, input) => this.append({ ...current, ...input, ...this.nextRevision(current) }),
-    })
-    this.workflow.seedRoles(parsed.assistantDefaults)
+    const parsed = StudioProjects.Config(config)
+    this.legacy = new ProjectStore(ctx, parsed)
+    this.folders = new ProjectFolders(ctx, this.legacy, parsed)
+    this.actors = new ActorLibraries(parsed)
     ctx.effect(() => async () => {
       this.closing = true
-      await Promise.allSettled(
-        [...this.pending].map(async ([id, run]) => {
-          await Promise.allSettled([Promise.resolve().then(() => run.backend.cancel(id)), run.done])
-        }),
-      )
+      for (const folder of [...this.folders.opened.values()]) await this.closeFolder(folder.info.id)
+      await this.legacy.close()
     })
+  }
+
+  private stores(): ProjectStore[] { return [...[...this.folders.opened.values()].map(folder => folder.store), this.legacy] }
+
+  /** List independent actor-library folders.
+   * @returns local libraries and actor counts.
+   */
+  @Remote('actorLibraries')
+  actorLibraries(): ActorLibrarySummary[] { return this.actors.list() }
+
+  /** Create a portable actor library under the device's actor directory.
+   * @param name - library name.
+   * @returns new library summary.
+   */
+  @Remote('createActorLibrary')
+  createActorLibrary(name: string): ActorLibrarySummary { return this.actors.create(name) }
+
+  /** Search actors in one independent library.
+   * @param id - library identity.
+   * @param search - name fragment.
+   * @param period - exact period filter.
+   * @param region - exact region filter.
+   * @param offset - result offset for paging.
+   * @returns first page and full matching count.
+   */
+  @Remote('libraryActors')
+  libraryActors(id: ActorLibraryId, search: string, period: string, region: string, offset: number): ActorPage {
+    return this.actors.actors(id, search, period, region, offset)
+  }
+
+  /** Read one actor and its two reference images.
+   * @param libraryId - library identity.
+   * @param actorId - actor identity.
+   * @returns actor or null.
+   */
+  @Remote('libraryActor')
+  libraryActor(libraryId: ActorLibraryId, actorId: ActorId): Actor | null { return this.actors.actor(libraryId, actorId) }
+
+  /** Save user-authored actor details without model work.
+   * @param libraryId - destination library.
+   * @param actorId - actor to replace, or null for a new actor.
+   * @param input - complete details and reference images.
+   * @returns committed actor.
+   */
+  @Remote('saveLibraryActor')
+  saveLibraryActor(libraryId: ActorLibraryId, actorId: ActorId | null, input: ActorInput): Actor {
+    return this.actors.save(libraryId, actorId, input)
+  }
+
+  /** Export a complete portable library archive.
+   * @param id - source library.
+   * @returns ZIP data URL and suggested filename.
+   */
+  @Remote('exportActorLibrary')
+  exportActorLibrary(id: ActorLibraryId): { name: string; dataUrl: string } { return this.actors.export(id) }
+
+  /** Install or merge a validated actor-library archive.
+   * @param dataUrl - ZIP data URL.
+   * @param target - destination library, or null to install separately.
+   * @returns destination and merge counts.
+   */
+  @Remote('importActorLibrary')
+  importActorLibrary(dataUrl: string, target: ActorLibraryId | null): ActorImportResult {
+    return this.actors.import(dataUrl, target)
+  }
+
+  private requireFolder(id: StudioFolderId) {
+    const folder = this.folders.opened.get(id)
+    if (!folder) throw new Error('Project is closed; open its folder first')
+    folder.check()
+    return folder
+  }
+
+  private checked(store: ProjectStore): ProjectStore {
+    const folder = [...this.folders.opened.values()].find(item => item.store === store)
+    folder?.check()
+    return store
+  }
+
+  private project(id: ProjectId): ProjectStore {
+    projectIdSchema.parse(id)
+    const location = this.folders.list().find(folder => folder.projectId === id)
+    if (location) return this.requireFolder(location.id).store
+    return this.legacy
+  }
+
+  private projectWorkspace(id: ProjectId): ProjectWorkspace {
+    return new ProjectWorkspace(this.project(id))
+  }
+
+  /** List project-local Markdown files, materializing committed scripts on disk.
+   * @param id - mounted project.
+   * @returns ordered script documents.
+   */
+  @Remote('scriptDocuments')
+  scriptDocuments(id: ProjectId): ScriptDocument[] { return this.projectWorkspace(id).documents(id) }
+
+  /** Read a project Markdown document.
+   * @param projectId - mounted project.
+   * @param documentId - document identity.
+   * @returns document or null.
+   */
+  @Remote('scriptDocument')
+  scriptDocument(projectId: ProjectId, documentId: ScriptDocumentId): ScriptDocument | null {
+    return this.projectWorkspace(projectId).readDocument(projectId, documentId)
+  }
+
+  /** Save Markdown, preserving project revision checks for outline and episode scripts.
+   * @param projectId - mounted project.
+   * @param documentId - document identity.
+   * @param expectedRevision - observed document revision.
+   * @param markdown - replacement text.
+   * @returns committed document.
+   */
+  @Remote('saveScriptDocument')
+  saveScriptDocument(projectId: ProjectId, documentId: ScriptDocumentId, expectedRevision: number, markdown: string): ScriptDocument {
+    return this.projectWorkspace(projectId).saveDocument(projectId, documentId, expectedRevision, markdown)
+  }
+
+  /** Read the user's completion decision against the current script digest.
+   * @param id - mounted project.
+   * @returns whether the script remains complete.
+   */
+  @Remote('scriptComplete')
+  scriptComplete(id: ProjectId): boolean { return this.projectWorkspace(id).scriptComplete(id) }
+
+  /** Confirm a complete saved script before admitting production.
+   * @param id - mounted project.
+   * @param expectedRevision - reviewed saved revision.
+   * @returns true after confirmation.
+   */
+  @Remote('completeScript')
+  completeScript(id: ProjectId, expectedRevision: number): boolean {
+    return this.projectWorkspace(id).completeScript(id, expectedRevision)
+  }
+
+  /** List episode and whole-film production units.
+   * @param id - mounted project.
+   * @returns saved units.
+   */
+  @Remote('productionUnits')
+  productionUnits(id: ProjectId): ProductionUnit[] { return this.projectWorkspace(id).units(id) }
+
+  /** Create an episode or whole-film canvas.
+   * @param id - mounted project.
+   * @param kind - production template.
+   * @param episodeId - source episode for episode units.
+   * @param title - unit name.
+   * @returns created unit.
+   */
+  @Remote('createProductionUnit')
+  createProductionUnit(id: ProjectId, kind: ProductionUnit['kind'], episodeId: EpisodeId | null, title: string): ProductionUnit {
+    return this.projectWorkspace(id).createUnit(id, kind, episodeId, title)
+  }
+
+  /** Read one production canvas.
+   * @param id - mounted project.
+   * @param unitId - production unit.
+   * @returns persisted nodes.
+   */
+  @Remote('canvasNodes')
+  canvasNodes(id: ProjectId, unitId: ProductionUnitId): CanvasNode[] {
+    return this.projectWorkspace(id).nodes(id, unitId)
+  }
+
+  /** Add a text or media-reference node.
+   * @param id - mounted project.
+   * @param unitId - owning canvas.
+   * @param kind - node kind.
+   * @param label - node title.
+   * @param x - canvas x coordinate.
+   * @param y - canvas y coordinate.
+   * @param assetId - optional media identity.
+   * @param text - script-node text or null for media.
+   * @returns created node.
+   */
+  @Remote('addCanvasNode')
+  addCanvasNode(id: ProjectId, unitId: ProductionUnitId, kind: CanvasNode['kind'], label: string,
+    x: number, y: number, assetId: ProjectMediaId | null, text: string | null): CanvasNode {
+    return this.projectWorkspace(id).addNode(id, unitId, kind, label, x, y, assetId, text)
+  }
+
+  /** Move one canvas node under an expected revision.
+   * @param id - mounted project.
+   * @param unitId - owning canvas.
+   * @param nodeId - node identity.
+   * @param revision - observed revision.
+   * @param x - new x coordinate.
+   * @param y - new y coordinate.
+   * @returns updated node.
+   */
+  @Remote('moveCanvasNode')
+  moveCanvasNode(id: ProjectId, unitId: ProductionUnitId, nodeId: CanvasNodeId, revision: number, x: number, y: number): CanvasNode {
+    return this.projectWorkspace(id).moveNode(id, unitId, nodeId, revision, x, y)
+  }
+
+  /** List indexed image, video and audio artifacts.
+   * @param id - mounted project.
+   * @returns media metadata.
+   */
+  @Remote('projectMedia')
+  projectMedia(id: ProjectId): ProjectMediaAsset[] { return this.projectWorkspace(id).assets(id) }
+
+  /** Import bounded media into one production canvas.
+   * @param id - mounted project.
+   * @param unitId - destination production unit.
+   * @param name - source filename.
+   * @param dataUrl - validated media bytes.
+   * @returns indexed media.
+   */
+  @Remote('importProjectMedia')
+  importProjectMedia(id: ProjectId, unitId: ProductionUnitId, name: string, dataUrl: string): ProjectMediaAsset {
+    return this.projectWorkspace(id).importMedia(id, unitId, name, dataUrl)
+  }
+
+  /** Return bounded media bytes for an original-image or audio/video preview.
+   * @param id - mounted project.
+   * @param assetId - indexed media identity.
+   * @returns data URL or null when unknown.
+   */
+  @Remote('projectMediaData')
+  projectMediaData(id: ProjectId, assetId: ProjectMediaId): string | null {
+    return this.projectWorkspace(id).mediaData(id, assetId)
+  }
+
+  private creation(id: StudioCreationId): ProjectStore {
+    const location = this.folders.list().find(folder => folder.creationId === id)
+    return location ? this.requireFolder(location.id).store : this.legacy
+  }
+
+  private target(target: StudioTarget): ProjectStore {
+    return target.kind === 'creation' ? this.creation(target.draftId) : this.project(target.projectId)
+  }
+
+  private owner(table: string, id: string): ProjectStore {
+    const store = this.stores().find(store => store.db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(id))
+    if (!store) return this.legacy
+    if (store === this.legacy) {
+      const row = store.db.prepare(`SELECT document FROM ${table} WHERE id = ?`).get(id)
+      if (row) {
+        const target = targetSchema.parse((JSON.parse(String(row.document)) as { target: unknown }).target)
+        return this.target(target)
+      }
+    }
+    return this.checked(store)
+  }
+
+  /**
+   * Read recent portable locations without opening or creating project files.
+   * @returns recent folders and availability.
+   */
+  @Remote('projectFolders')
+  projectFolders(): StudioFolder[] { return this.folders.list(false) }
+
+  /**
+   * Open a portable project or creation form.
+   * @param path - absolute project directory.
+   * @returns its current location.
+   */
+  @Remote('openFolder')
+  openFolder(path: string): StudioFolder {
+    if (this.closing) throw new Error('The studio is closing')
+    const folder = this.folders.open(path)
+    if (this.backend) this.bindBackend(folder.store)
+    return this.folders.describe(folder)
+  }
+
+  /**
+   * Establish a portable creation form before any assistant task.
+   * @param path - empty absolute directory.
+   * @param id - form identity.
+   * @param input - initial form.
+   * @returns its saved location.
+   */
+  @Remote('prepareFolder')
+  async prepareFolder(path: string, id: StudioCreationId, input: ProjectInput): Promise<StudioFolder> {
+    if (this.closing) throw new Error('The studio is closing')
+    targetSchema.parse({ kind: 'creation', draftId: id })
+    const parsed = creationInputSchema.parse(input)
+    if (this.folders.list().some(folder => folder.creationId === id)) throw new Error('This creation draft already has a location; open it first')
+    const previous = this.legacy.creationDraft(id)
+    if (previous) {
+      for (const row of this.legacy.db.prepare("SELECT document FROM studio_tasks WHERE state = 'running'").all()) {
+        const task = JSON.parse(String(row.document)) as StudioTask
+        if (task.target.kind === 'creation' && task.target.draftId === id) await this.legacy.cancelAssistant(task.id)
+      }
+    }
+    const folder = this.folders.create(path)
+    try {
+      const sessions = previous ? copyCreationRecords(this.legacy, folder.store, id) : []
+      if (sessions.length) {
+        if (!this.backend?.copySessions) throw new Error('The professional runtime is required to copy project conversations')
+        await this.backend.copySessions(sessions, folder.info.path, folder.check)
+      }
+      const saved = folder.store.saveCreationDraft(id, previous?.revision ?? null, parsed)
+      if (saved.status !== 'saved') throw new Error('Creation draft changed during migration; reload it before trying again')
+      this.folders.finish(folder)
+      if (this.backend) this.bindBackend(folder.store)
+      return this.folders.describe(folder)
+    } catch (error) {
+      await folder.close()
+      this.releaseLocation(folder.info.path)
+      this.folders.discard(folder.info.id)
+      throw error
+    }
+  }
+
+  /**
+   * Drain professional work, flush its history, then release all project files.
+   * @param id - open folder identity.
+   */
+  @Remote('closeFolder')
+  async closeFolder(id: StudioFolderId): Promise<void> {
+    const folder = this.folders.opened.get(id)
+    if (!folder) return
+    this.folders.describe(folder)
+    await folder.store.stopTasks()
+    await this.backend?.closeProject?.(folder.info.path)
+    this.backendDisposers.get(folder.store)?.()
+    this.backendDisposers.delete(folder.store)
+    await folder.close()
+    this.releaseLocation(folder.info.path)
+  }
+
+  /**
+   * Hide a catalog entry without accessing project files or changing its mounted runtime.
+   * @param id - recent location identity.
+   */
+  @Remote('forgetFolder')
+  forgetFolder(id: StudioFolderId): void { this.folders.forget(id) }
+
+  /**
+   * Reveal the currently opened directory on the application host.
+   * @param id - mounted folder.
+   * @param signal - caller cancellation.
+   */
+  @Remote('revealFolder')
+  async revealFolder(id: StudioFolderId, signal: AbortSignal): Promise<void> {
+    const folder = this.requireFolder(id)
+    if (!canOpenNativePath()) throw new Error('This application host has no native file manager; use the displayed project path')
+    await revealNativePath(folder.info.path, signal)
+  }
+
+  /** Copy a legacy project and its dialogue into an empty portable directory; the source remains intact.
+   * @param id - legacy project identity.
+   * @param path - empty destination directory.
+   * @returns the opened portable location after all histories have been copied.
+   */
+  @Remote('migrateProject')
+  async migrateProject(id: ProjectId, path: string): Promise<StudioFolder> {
+    if (this.folders.list().some(folder => folder.projectId === id)) throw new Error('This project already has a folder')
+    if (!this.legacy.get(id)) throw new Error('Legacy project not found')
+    const running = this.legacy.db.prepare("SELECT document FROM studio_tasks WHERE state = 'running'").all()
+    for (const row of running) {
+      const task = JSON.parse(String(row.document)) as StudioTask
+      if (task.target.kind !== 'creation' && task.target.projectId === id) await this.legacy.cancelAssistant(task.id)
+    }
+    const folder = this.folders.create(path)
+    try {
+      const sessions = copyProjectRecords(this.legacy, folder.store, id)
+      if (sessions.length) {
+        if (!this.backend?.copySessions) throw new Error('The professional runtime is required to copy project conversations')
+        await this.backend.copySessions(sessions, folder.info.path, folder.check)
+      }
+      if (this.backend) this.bindBackend(folder.store)
+      this.folders.finish(folder)
+      return this.folders.describe(folder)
+    } catch (error) {
+      await folder.close()
+      this.folders.discard(folder.info.id)
+      throw error
+    }
+  }
+
+  /**
+   * Save a complete copy and close the source for transfer.
+   * @param id - source folder.
+   * @param destination - empty absolute destination.
+   */
+  @Remote('backupFolder')
+  async backupFolder(id: StudioFolderId, destination: string): Promise<void> {
+    const folder = this.requireFolder(id)
+    await folder.store.stopTasks()
+    await this.backend?.closeProject?.(folder.info.path)
+    this.folders.backup(folder, destination)
+    this.folders.describe(folder)
+    await folder.close()
+    this.releaseLocation(folder.info.path)
+  }
+
+  /**
+   * Persist a recoverable editor buffer without creating a formal content revision.
+   * @param id - project identity.
+   * @param baseRevision - version edited.
+   * @param input - complete buffer.
+   */
+  @Remote('saveEditorDraft')
+  saveEditorDraft(id: ProjectId, baseRevision: number, input: ProjectInput): void {
+    const store = this.project(id)
+    store.assertWritable()
+    revisionSchema.parse(baseRevision)
+    const parsed = creationInputSchema.parse(input)
+    if (!store.get(id)) throw new Error('Project not found')
+    store.db.prepare('INSERT INTO studio_edit_drafts VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET base_revision = excluded.base_revision, document = excluded.document')
+      .run(id, baseRevision, JSON.stringify(parsed))
+  }
+
+  /**
+   * Read a recoverable buffer; its base revision may require conflict resolution.
+   * @param id - project identity.
+   * @returns saved buffer or null.
+   */
+  @Remote('editorDraft')
+  editorDraft(id: ProjectId): { baseRevision: number; input: ProjectInput } | null {
+    const row = this.project(id).db.prepare('SELECT base_revision, document FROM studio_edit_drafts WHERE project_id = ?').get(id)
+    return row ? {
+      baseRevision: revisionSchema.parse(row.base_revision), input: creationInputSchema.parse(JSON.parse(String(row.document))),
+    } : null
+  }
+
+  /**
+   * Resolve a professional Session's currently mounted directory.
+   * @param id - reserved Session identity.
+   * @returns current root and disk check, or undefined for legacy sessions.
+   */
+  sessionProject(id: SessionId): { root: string; check: () => void } | undefined {
+    const location = this.sessionLocations.get(id)
+    return location ? { root: location.root, check: location.check } : undefined
+  }
+
+  private releaseLocation(root: string): void {
+    for (const [id, location] of this.sessionLocations) if (location.root === root) this.sessionLocations.delete(id)
+    for (const [store, dispose] of this.backendDisposers) {
+      if (store.projectRoot !== root) continue
+      dispose()
+      this.backendDisposers.delete(store)
+    }
+  }
+
+  private bindBackend(store: ProjectStore): void {
+    if (store.hasBackend || !this.backend) return
+    const folder = [...this.folders.opened.values()].find(item => item.store === store)
+    if (folder) {
+      for (const row of store.db.prepare('SELECT session_id FROM studio_workspaces').all()) {
+        const id = String(row.session_id) as SessionId
+        const prior = this.sessionLocations.get(id)
+        if (prior && prior.root !== folder.info.path) throw new Error('Session identity belongs to another open project')
+        this.sessionLocations.set(id, { root: folder.info.path, check: folder.check, store })
+      }
+      this.backend.openProject?.(folder.info.path, folder.check)
+    }
+    this.backendDisposers.set(store, store.registerAssistantBackend(this.backend))
   }
 
   /**
@@ -140,33 +582,12 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('list')
   list(): ProjectSummary[] {
-    return this.db
-      .prepare(
-        `
-      SELECT r.project_id, r.revision, r.document FROM projects p
-      LEFT JOIN project_revisions r ON r.project_id = p.id
-      AND r.revision = (SELECT MAX(revision) FROM project_revisions WHERE project_id = p.id)
-    `,
-      )
-      .all()
-      .map((row) => {
-        if (row.document === null) throw new Error('Multica project has no revisions')
-        const project = this.decode(row)
-        return {
-          id: project.id,
-          cover: this.readCover(project.id),
-          name: project.name,
-          concept: project.concept,
-          aspectRatio: project.aspectRatio,
-          targetEpisodes: project.targetEpisodes,
-          episodeDuration: project.episodeDuration,
-          episodeCount: project.episodes.length,
-          archived: project.archived,
-          revision: project.revision,
-          createdAt: project.createdAt,
-          updatedAt: project.updatedAt,
-        }
-      })
+    const locations = this.folders.list(false)
+    const ids = new Set(this.folders.list().map(location => location.projectId))
+    return [
+      ...this.legacy.list().filter(project => !ids.has(project.id)),
+      ...locations.flatMap(location => location.summary ? [location.summary] : []),
+    ]
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id))
   }
 
@@ -175,13 +596,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('coverUploadLimit')
   coverUploadLimit(): number {
-    return this.maxCoverBytes
-  }
-
-  private readCover(id: ProjectId): ProjectCover {
-    const row = this.db.prepare('SELECT revision, image FROM project_covers WHERE project_id = ?').get(id)
-    if (!row) return { revision: 0, image: null }
-    return z.strictObject({ revision: revisionSchema, image: z.string().nullable() }).parse(row)
+    return this.legacy.coverUploadLimit()
   }
 
   /** Replace or remove a custom project cover independently of text revisions.
@@ -192,31 +607,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('setCover')
   setCover(id: ProjectId, expectedRevision: number, image: string | null): ProjectCover {
-    const key = projectIdSchema.parse(id)
-    z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1).parse(expectedRevision)
-    if (image !== null) {
-      z.string().max(Math.ceil(this.maxCoverBytes / 3) * 4 + 32).parse(image)
-      const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(image)
-      const encoded = match?.[2]
-      if (!match || !encoded) throw new Error('Cover must be a PNG, JPEG or WebP image')
-      const bytes = Buffer.from(encoded, 'base64')
-      const valid = match[1] === 'png' ? bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
-        : match[1] === 'jpeg' ? bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'))
-          : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP'
-      if (!valid || bytes.length > this.maxCoverBytes || bytes.toString('base64') !== encoded)
-        throw new Error('Cover image is invalid or exceeds the upload limit')
-    }
-    return transaction(this.db, () => {
-      const project = this.get(key)
-      if (!project || project.archived) throw new Error('Cover requires an existing, active project')
-      const current = this.readCover(key)
-      if (current.revision !== expectedRevision) throw new Error('Cover has changed; refresh the project before replacing it')
-      const cover = { revision: current.revision + 1, image }
-      this.db.prepare(`INSERT INTO project_covers (project_id, revision, image) VALUES (?, ?, ?)
-        ON CONFLICT(project_id) DO UPDATE SET revision = excluded.revision, image = excluded.image`)
-        .run(key, cover.revision, cover.image)
-      return cover
-    })
+    return this.project(id).setCover(id, expectedRevision, image)
   }
 
   /**
@@ -226,19 +617,9 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('get')
   get(id: ProjectId): Project | null {
-    const key = projectIdSchema.parse(id)
-    const row = this.db
-      .prepare(
-        `
-      SELECT * FROM project_revisions WHERE project_id = ? ORDER BY revision DESC LIMIT 1
-    `,
-      )
-      .get(key)
-    if (row !== undefined) return this.decode(row)
-    if (this.db.prepare('SELECT id FROM projects WHERE id = ?').get(key) !== undefined) {
-      throw new Error(`Multica project ${key} has no revisions`)
-    }
-    return null
+    projectIdSchema.parse(id)
+    if (this.folders.list().some(location => location.projectId === id)) return this.project(id).get(id)
+    return this.stores().find(store => store.get(id) !== null)?.get(id) ?? null
   }
 
   /**
@@ -248,15 +629,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('create')
   create(input: ProjectInput): Project {
-    const content = projectInputSchema.parse(input)
-    return transaction(this.db, () => this.createProject(content))
-  }
-
-  private createProject(content: ProjectInput): Project {
-    const id = projectIdSchema.parse(randomUUID())
-    const now = new Date().toISOString()
-    this.db.prepare('INSERT INTO projects (id) VALUES (?)').run(id)
-    return this.append({ ...content, id, revision: 1, archived: false, createdAt: now, updatedAt: now })
+    return this.legacy.create(input)
   }
 
   /**
@@ -268,11 +641,10 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('save')
   save(id: ProjectId, expectedRevision: number, input: ProjectInput): SaveResult {
-    const content = projectInputSchema.parse(input)
-    return this.change(id, expectedRevision, (current) => {
-      if (current.archived) return { status: 'archived', project: current }
-      return { status: 'saved', project: this.append({ ...current, ...content, ...this.nextRevision(current) }) }
-    })
+    const store = this.project(id)
+    const result = store.save(id, expectedRevision, input)
+    if (result.status === 'saved') store.db.prepare('DELETE FROM studio_edit_drafts WHERE project_id = ? AND document = ?').run(id, JSON.stringify(input))
+    return result
   }
 
   /**
@@ -284,11 +656,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('setArchived')
   setArchived(id: ProjectId, expectedRevision: number, archived: boolean): SaveResult {
-    z.boolean().parse(archived)
-    return this.change(id, expectedRevision, current => ({
-      status: 'saved',
-      project: current.archived === archived ? current : this.append({ ...current, archived, ...this.nextRevision(current) }),
-    }))
+    return this.project(id).setArchived(id, expectedRevision, archived)
   }
 
   /**
@@ -298,30 +666,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('history')
   history(id: ProjectId): Project[] {
-    const key = projectIdSchema.parse(id)
-    const projects = this.db
-      .prepare(
-        `
-      SELECT * FROM project_revisions WHERE project_id = ? ORDER BY revision
-    `,
-      )
-      .all(key)
-      .map(row => this.decode(row))
-    const first = projects[0]
-    if (first === undefined) {
-      if (this.db.prepare('SELECT id FROM projects WHERE id = ?').get(key) !== undefined) {
-        throw new Error(`Multica project ${key} has no revisions`)
-      }
-      return []
-    }
-    let updatedAt = first.createdAt
-    for (const [index, project] of projects.entries()) {
-      if (project.revision !== index + 1 || project.createdAt !== first.createdAt || project.updatedAt < updatedAt) {
-        throw new Error(`Invalid Multica revision history for ${key}`)
-      }
-      updatedAt = project.updatedAt
-    }
-    return projects
+    return this.get(id) ? this.project(id).history(id) : []
   }
 
   /** List saved creation forms independently of formal projects.
@@ -329,9 +674,9 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('creationDrafts')
   creationDrafts(): StudioCreationSummary[] {
-    return this.workflow
-      .creations()
-      .map(draft => ({ id: draft.id, revision: draft.revision, name: draft.input.name, updatedAt: draft.updatedAt }))
+    const portableIds = new Set(this.folders.list().map(folder => folder.creationId))
+    return this.stores().flatMap(store => store === this.legacy
+      ? store.creationDrafts().filter(draft => !portableIds.has(draft.id)) : store.creationDrafts())
   }
 
   /** Reopen the latest saved creation form without invoking an assistant.
@@ -340,7 +685,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('creationDraft')
   creationDraft(id: StudioCreationId): StudioCreationDraft | null {
-    return this.workflow.creation(id)
+    return this.creation(id).creationDraft(id)
   }
 
   /** Save a creation form without creating a Project or starting an Agent.
@@ -351,7 +696,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('saveCreationDraft')
   saveCreationDraft(id: StudioCreationId, expectedRevision: number | null, input: ProjectInput): StudioCreationSaveResult {
-    return this.workflow.saveCreation(id, expectedRevision, input)
+    return this.creation(id).saveCreationDraft(id, expectedRevision, input)
   }
 
   /** Create a formal project from a saved form exactly once.
@@ -362,7 +707,11 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('createFromDraft')
   createFromDraft(id: StudioCreationId, expectedRevision: number, input: ProjectInput): Project {
-    return this.workflow.createFromDraft(id, expectedRevision, input)
+    const store = this.creation(id)
+    const project = store.createFromDraft(id, expectedRevision, input)
+    const folder = [...this.folders.opened.values()].find(folder => folder.store === store)
+    if (folder) this.folders.describe(folder)
+    return project
   }
 
   /** Read actual dependency availability for the professional configuration panel.
@@ -370,7 +719,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('assistantCatalog')
   async assistantCatalog(): Promise<StudioAssistantCatalog> {
-    return this.backend ? this.backend.catalog() : { backendAvailable: false, enabledRoles: [], defaultModel: null, skills: [], tools: [] }
+    return this.legacy.assistantCatalog()
   }
 
   /** Read the field policy used by both proposal schemas and application validation.
@@ -378,32 +727,30 @@ export class StudioProjects extends TypertRemoteService {
    * @returns target-owned field identities.
    */
   proposalFields(target: StudioTarget): StudioField[] {
-    return targetFields(target)
+    return this.legacy.proposalFields(target)
   }
 
   /** List the published professional-role configurations.
+   * @param folderId - open project identity, or omit for device templates.
    * @returns one current version for each role.
    */
   @Remote('roles')
-  roles(): StudioRoleRevision[] {
-    return this.workflow.roles()
+  roles(folderId?: StudioFolderId): StudioRoleRevision[] {
+    return (folderId ? this.requireFolder(folderId).store : this.legacy).roles()
   }
 
   /** Publish a human-edited role configuration; existing workspaces retain their versions.
    * @param role - role identity.
    * @param expectedRevision - version edited by the user.
    * @param config - complete professional configuration.
+   * @param folderId - open project identity, or omit for device templates.
    * @returns the new immutable role revision.
    */
   @Remote('publishRole')
-  async publishRole(role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig): Promise<StudioRoleRevision> {
-    const backend = this.requireBackend()
-    const parsed = roleConfigSchema.parse(config)
-    roleIdSchema.parse(role)
-    revisionSchema.parse(expectedRevision)
-    await backend.resolve({ role, revision: expectedRevision + 1, config: parsed, createdAt: new Date().toISOString() })
-    if (this.closing || this.backend !== backend) throw new Error('Professional execution provider changed; retry publication')
-    return this.workflow.publishRole(role, expectedRevision, parsed)
+  async publishRole(
+    role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig, folderId?: StudioFolderId,
+  ): Promise<StudioRoleRevision> {
+    return (folderId ? this.requireFolder(folderId).store : this.legacy).publishRole(role, expectedRevision, config)
   }
 
   /** Open recorded dialogue without starting an Agent or making a model request.
@@ -412,7 +759,11 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('openWorkspace')
   openWorkspace(target: StudioTarget): StudioWorkspaceView {
-    return this.workflow.view(this.workflow.open(target).id)
+    const store = this.target(target)
+    const view = store.openWorkspace(target)
+    const folder = [...this.folders.opened.values()].find(item => item.store === store)
+    if (folder) this.sessionLocations.set(view.workspace.sessionId, { root: folder.info.path, check: folder.check, store })
+    return view
   }
 
   /** Read a previously bound workspace, including in-flight tasks from an older role version.
@@ -421,7 +772,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('workspace')
   workspace(id: StudioWorkspaceId): StudioWorkspaceView {
-    return this.workflow.view(id)
+    return this.owner('studio_workspaces', id).workspace(id)
   }
 
   /** Resolve host policy when the Harness creates or resumes a bound Session.
@@ -429,14 +780,14 @@ export class StudioProjects extends TypertRemoteService {
    * @returns its immutable professional binding, or null for an ordinary Session.
    */
   workspaceForSession(sessionId: SessionId): StudioWorkspace | null {
-    return this.workflow.workspaceForSession(sessionId)
+    return (this.sessionLocations.get(sessionId)?.store ?? this.legacy).workspaceForSession(sessionId)
   }
 
   /** Record successful Session creation before sending its first professional input.
    * @param id - workspace whose reserved Session now exists.
    */
   markWorkspaceSession(id: StudioWorkspaceId): void {
-    this.workflow.markSessionInitialized(id)
+    this.owner('studio_workspaces', id).markWorkspaceSession(id)
   }
 
   /** Install one trusted professional execution provider for this project service.
@@ -445,17 +796,13 @@ export class StudioProjects extends TypertRemoteService {
    */
   registerAssistantBackend(backend: StudioAssistantBackend): () => void {
     if (this.backend) throw new Error('A professional execution provider is already registered')
-    this.workflow.interruptPending((pid) => {
-      try {
-        process.kill(pid, 0)
-        return true
-      } catch (error) {
-        return (error as NodeJS.ErrnoException).code !== 'ESRCH'
-      }
-    })
     this.backend = backend
+    for (const store of this.stores()) this.bindBackend(store)
     return () => {
-      if (this.backend === backend) this.backend = undefined
+      if (this.backend !== backend) return
+      this.backend = undefined
+      for (const dispose of this.backendDisposers.values()) dispose()
+      this.backendDisposers.clear()
     }
   }
 
@@ -465,27 +812,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('startAssistant')
   async startAssistant(request: StudioTaskRequest): Promise<StudioTaskView> {
-    const backend = this.requireBackend()
-    const parsed = taskRequestSchema.parse(request)
-    const workspace = this.workflow.workspace(parsed.workspaceId)
-    const resolved = workspace.resolved ?? (await backend.resolve(workspace.role))
-    if (this.closing || this.backend !== backend) throw new Error('Professional execution provider changed; retry the request')
-    const started = this.workflow.start(parsed, resolved)
-    const task = deepFreeze(started.task)
-    const created = started.created
-    if (created) {
-      const done = Promise.resolve().then(() => this.executeTask(task, backend))
-      this.pending.set(task.id, { backend, done })
-      void done.then(
-        () => {
-          this.pending.delete(task.id)
-        },
-        (error: unknown) => {
-          this.ctx.logger.error('Unable to persist professional task settlement', error)
-        },
-      )
-    }
-    return this.workflow.taskView(task)
+    return this.owner('studio_workspaces', request.workspaceId).startAssistant(request)
   }
 
   /** Assert that a professional execution belongs to this service's live dispatch and durable snapshot.
@@ -493,8 +820,7 @@ export class StudioProjects extends TypertRemoteService {
    * @throws when an unowned or altered task attempts to drive a Session.
    */
   assertAssistantTask(task: StudioTask): void {
-    if (!this.pending.has(task.id) || JSON.stringify(this.workflow.task(task.id)) !== JSON.stringify(task))
-      throw new Error('Professional execution does not match an owned frozen task')
+    this.owner('studio_tasks', task.id).assertAssistantTask(task)
   }
 
   /** Await a task's recorded settlement without polling a model or repeating submission.
@@ -503,8 +829,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('waitTask')
   async waitTask(id: StudioTaskId): Promise<StudioTaskView> {
-    const task = this.workflow.task(id)
-    return this.workflow.taskView(await (this.pending.get(id)?.done ?? task))
+    return this.owner('studio_tasks', id).waitTask(id)
   }
 
   /** Stop owned professional work; external-process work is never falsely reported as stopped.
@@ -513,15 +838,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('cancelAssistant')
   async cancelAssistant(id: StudioTaskId): Promise<StudioTaskView> {
-    const task = this.workflow.task(id)
-    const pending = this.pending.get(id)
-    if (!pending) {
-      if (task.status === 'running') throw new Error('This task belongs to another process; stop it in that application')
-      return this.workflow.taskView(task)
-    }
-    await pending.backend.cancel(id)
-    await pending.done
-    return this.workflow.taskView(this.workflow.task(id))
+    return this.owner('studio_tasks', id).cancelAssistant(id)
   }
 
   /** Apply human-selected suggestions to a draft; this never approves content.
@@ -530,7 +847,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('applyProposal')
   applyProposal(request: StudioApplyRequest): StudioApplyResult {
-    return this.workflow.apply(request)
+    return this.owner('studio_proposals', request.proposalId).applyProposal(request)
   }
 
   /** Ignore pending proposal fields without editing the project.
@@ -540,7 +857,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('ignoreProposal')
   ignoreProposal(id: StudioProposalId, fields: StudioField[]): StudioProposal {
-    return this.workflow.ignore(id, fields)
+    return this.owner('studio_proposals', id).ignoreProposal(id, fields)
   }
 
   /** Protect selected fields from assistant proposal application.
@@ -550,7 +867,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('setFieldLocks')
   setFieldLocks(target: StudioTarget, fields: StudioField[]): StudioField[] {
-    return this.workflow.setLocks(target, fields)
+    return this.target(target).setFieldLocks(target, fields)
   }
 
   /** Submit a saved target for human content review.
@@ -560,7 +877,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('submitReview')
   submitReview(target: Exclude<StudioTarget, { kind: 'creation' }>, expectedRevision: number): StudioReview {
-    return this.workflow.submitReview(target, expectedRevision)
+    return this.target(target).submitReview(target, expectedRevision)
   }
 
   /** Read pending and completed reviews for a project.
@@ -569,7 +886,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('reviews')
   reviews(id: ProjectId): StudioReview[] {
-    return this.workflow.reviews(id)
+    return this.project(id).reviews(id)
   }
 
   /** Read the global human review queue across projects.
@@ -577,7 +894,9 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('reviewQueue')
   reviewQueue(): StudioReview[] {
-    return this.workflow.reviews()
+    const portableIds = new Set(this.folders.list().map(folder => folder.projectId))
+    return this.stores().flatMap(store => store === this.legacy
+      ? store.reviewQueue().filter(review => !portableIds.has(review.target.projectId)) : store.reviewQueue())
   }
 
   /** Read an approved immutable input for a controlled, workspace-scoped context tool.
@@ -585,7 +904,7 @@ export class StudioProjects extends TypertRemoteService {
    * @returns exact approved fields and their review reference.
    */
   approvedContext(id: StudioReviewId): { review: StudioReview; fields: { field: StudioField; value: StudioFieldValue }[] } {
-    return this.workflow.approvedContext(id)
+    return this.owner('studio_reviews', id).approvedContext(id)
   }
 
   /** Record a human approval or return; professional tools do not expose this operation.
@@ -596,69 +915,7 @@ export class StudioProjects extends TypertRemoteService {
    */
   @Remote('decideReview')
   decideReview(id: StudioReviewId, decision: 'approved' | 'returned', comment: string): StudioReview {
-    return this.workflow.decideReview(id, decision, comment)
-  }
-
-  private requireBackend(): StudioAssistantBackend {
-    if (this.closing || !this.backend) throw new Error('Professional assistants are not configured')
-    return this.backend
-  }
-
-  private async executeTask(task: StudioTask, backend: StudioAssistantBackend): Promise<StudioTask> {
-    try {
-      const result = await backend.execute(task)
-      return this.workflow.complete(task.id, result)
-    } catch (error) {
-      const cancelled = error instanceof Error && error.name === 'AbortError'
-      return this.workflow.fail(task.id, cancelled ? 'cancelled' : 'failed', error instanceof Error ? error.message : String(error))
-    }
-  }
-
-  private change(id: ProjectId, expectedRevision: number, write: (current: Project) => SaveResult): SaveResult {
-    const key = projectIdSchema.parse(id)
-    revisionSchema.parse(expectedRevision)
-    return transaction(this.db, () => {
-      const current = this.get(key)
-      if (current === null) throw new Error(`Multica project not found: ${key}`)
-      if (current.revision !== expectedRevision) return { status: 'conflict', project: current }
-      return write(current)
-    })
-  }
-
-  private nextRevision(current: Project): Pick<Project, 'revision' | 'updatedAt'> {
-    return {
-      revision: revisionSchema.parse(current.revision + 1),
-      updatedAt: new Date(Math.max(Date.now(), Date.parse(current.updatedAt))).toISOString(),
-    }
-  }
-
-  private append(project: Project): Project {
-    for (const episode of project.episodes) {
-      const owner = this.db.prepare('SELECT project_id FROM episode_owners WHERE episode_id = ?').get(episode.id)
-      if (owner !== undefined && owner.project_id !== project.id) {
-        throw new Error(`Episode ${episode.id} belongs to another Multica project`)
-      }
-      if (owner === undefined) {
-        this.db.prepare('INSERT INTO episode_owners (episode_id, project_id) VALUES (?, ?)').run(episode.id, project.id)
-      }
-    }
-    this.db
-      .prepare('INSERT INTO project_revisions (project_id, revision, document) VALUES (?, ?, ?)')
-      .run(project.id, project.revision, JSON.stringify(project))
-    return project
-  }
-
-  private decode(row: Record<string, SQLOutputValue>): Project {
-    const document = z.string().parse(row.document)
-    const project = projectSchema.parse(JSON.parse(document) as unknown)
-    if (project.id !== row.project_id || project.revision !== row.revision) {
-      throw new Error('Multica project JSON disagrees with its revision columns')
-    }
-    for (const episode of project.episodes) {
-      const owner = this.db.prepare('SELECT project_id FROM episode_owners WHERE episode_id = ?').get(episode.id)
-      if (owner?.project_id !== project.id) throw new Error('Invalid Multica episode ownership in stored project')
-    }
-    return project
+    return this.owner('studio_reviews', id).decideReview(id, decision, comment)
   }
 }
 

@@ -57,6 +57,42 @@ function mount(overrides: Partial<AccountOperations> = {}) {
 }
 
 describe('third-party authorization settings', () => {
+  it('shows the committed connection while account-list refresh is still pending', async () => {
+    let reads = 0
+    let release = (_accounts: AccountView[]): void => {}
+    const pending = new Promise<AccountView[]>((resolve) => { release = resolve })
+    const initial: AccountView[] = [{ id: 'chatgpt', connected: false, enabled: false,
+      connecting: false, models: [], catalogFailed: false }]
+    mount({ list: () => ++reads === 1 ? Promise.resolve(initial) : pending,
+      async *connect() { yield { kind: 'settled', status: 'connected' } },
+    })
+    try {
+      fireEvent.click(await screen.findByRole('button', { name: en.loginChatgpt }))
+      await screen.findByText(en.connectedNotice)
+      expect(screen.getByRole('button', { name: en.disconnect })).toBeTruthy()
+      expect(reads).toBeGreaterThan(1)
+    } finally {
+      await act(async () => { release([{ ...initial[0]!, connected: true, enabled: true }]); await pending })
+    }
+  })
+  it.each([
+    ['authorization', 'authorizationFailed'], ['activation', 'activationFailed'], ['timeout', 'loginTimedOut'],
+  ] as const)('shows an actionable %s failure after closing the login dialog', async (reason, key) => {
+    mount({ async *connect() {
+      yield { kind: 'started', attemptId: brandString<AttemptId>('attempt') }
+      yield { kind: 'settled', status: 'failed', reason }
+    } })
+    fireEvent.click(await screen.findByRole('button', { name: en.loginClaude }))
+    await screen.findByText(en[key])
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('offers activation when ChatGPT authorization is saved but the account is disabled', async () => {
+    mount({ list: async () => [{ id: 'chatgpt', connected: true, enabled: false,
+      connecting: false, models: [], catalogFailed: false }] })
+    await screen.findByRole('button', { name: en.resumeConnection })
+    expect(screen.queryByRole('button', { name: en.loginChatgpt })).toBeNull()
+  })
   it('records the account settings presentation without private login data', async () => {
     const { container } = mount()
     const picker = await screen.findByRole('combobox') as HTMLSelectElement

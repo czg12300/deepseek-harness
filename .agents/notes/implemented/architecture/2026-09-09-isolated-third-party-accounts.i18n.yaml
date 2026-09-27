@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-09-isolated-third-party-accounts.md
-2026-09-09-isolated-third-party-accounts.md: ec8e5d183521b4ea3c650c511d7f83e7399c7596
-2026-09-09-isolated-third-party-accounts.zh.md: 3baeb3409ccb3edb4c61bd82c182b531b902f5ff
+2026-09-09-isolated-third-party-accounts.md: b8196d455493d31f3f2d7d501ba077d7b166e8b5
+2026-09-09-isolated-third-party-accounts.zh.md: 4237594632738d4c5e903bf98f6814417ef68ead

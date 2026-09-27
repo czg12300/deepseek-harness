@@ -2,6 +2,7 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type {
+  ModelSelection,
   ProjectInput,
   StudioTarget,
   StudioWorkspaceId,
@@ -344,8 +345,12 @@ export class StudioModel {
    * @param input - complete captured local draft.
    * @param prompt - explicit human request.
    * @param submitted - clears only the exact submitted text in the declared draft store.
+   * @param modelSelection - model and effort captured for this submission and transport retries.
    */
-  async send(id: StudioWorkspaceId, revision: number | null, input: ProjectInput, prompt: string, submitted: () => void): Promise<void> {
+  async send(
+    id: StudioWorkspaceId, revision: number | null, input: ProjectInput, prompt: string,
+    submitted: () => void, modelSelection?: ModelSelection,
+  ): Promise<void> {
     const current = requireStudioQuery(this.source.getSnapshot(), id)
     if (!this.isAlive() || current.busy || current.retry) return
     const request: StudioTaskRequest = {
@@ -354,6 +359,7 @@ export class StudioModel {
       expectedRevision: revision,
       input,
       prompt,
+      ...(modelSelection ? { modelSelection } : {}),
     }
     this.source.update((state) => {
       requireStudioQuery(state, id).retry = request
@@ -628,7 +634,7 @@ export interface StudioActions {
   open(target: StudioTarget): Promise<void>
   refresh(id: StudioWorkspaceId): Promise<void>
   selectVersion(target: StudioTarget, id: StudioWorkspaceId): Promise<void>
-  send(id: StudioWorkspaceId, revision: number | null, input: ProjectInput, prompt: string): Promise<void>
+  send(id: StudioWorkspaceId, revision: number | null, input: ProjectInput, prompt: string, modelSelection?: ModelSelection): Promise<void>
   retry(id: StudioWorkspaceId): Promise<void>
   abandon(id: StudioWorkspaceId): void
   cancel(task: StudioTaskView): Promise<void>

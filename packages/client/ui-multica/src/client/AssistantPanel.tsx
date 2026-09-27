@@ -1,7 +1,7 @@
 /** One professional dialogue and proposal UI shared by all authoring targets. */
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsStore, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   ProjectInput,
   StudioTarget,
@@ -23,7 +23,7 @@ export function fieldText(value: StudioFieldValue, empty: string): string {
   return Array.isArray(value) ? value.map(episode => `${episode.title}\n${episode.script}`).join('\n\n') : String(value)
 }
 
-type AssistantProps = PropsLocale<'multica'> &
+type AssistantProps = PropsLocale<'multica'> & PropsRenderSlots<'multica.assistant.composer'> &
   Pick<PropsStore<ReturnType<typeof createMulticaStore>>, 'actions'> & {
     state: MulticaDrafts
     studio: StudioState
@@ -39,8 +39,11 @@ type AssistantProps = PropsLocale<'multica'> &
  * @param props - immutable target, current local draft, and declared mutation channels.
  * @returns professional dialogue and explicit proposal controls.
  */
-export function AssistantPanel({ state, studio, studioActions, target, input, revision, disabled, saveFirst, actions, t }: AssistantProps) {
+export function AssistantPanel({
+  state, studio, studioActions, target, input, revision, disabled, saveFirst, actions, t, renderSlot,
+}: AssistantProps) {
   const key = studioTargetKey(target)
+  const outline = target.kind === 'outline'
   const roleId = target.kind === 'creation' || target.kind === 'outline' ? 'planner' : 'writer'
   const latestRole = studio.roles.find(role => role.role === roleId)
   const backend = studio.catalog?.backendAvailable === true
@@ -49,6 +52,22 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
   const view = query?.view
   const running = view?.tasks.find(task => task.status === 'running')
   const prompt = state.assistantPrompts[key] ?? ''
+  const dialogue = useRef<HTMLDivElement>(null)
+  const lastSuccess = view?.tasks.filter(task => task.status === 'completed').at(-1)
+  useLayoutEffect(() => {
+    if (dialogue.current) dialogue.current.scrollTop = dialogue.current.scrollHeight
+  }, [id, view?.tasks.length, view?.tasks.at(-1)?.reply])
+  const selected = state.assistantModels[key] ?? lastSuccess ?? view?.workspace.resolved ?? (
+    latestRole?.config.provider && latestRole.config.model
+      ? { provider: latestRole.config.provider, model: latestRole.config.model }
+      : studio.catalog?.defaultModel ?? null
+  )
+  const selection = selected === null ? null : {
+    provider: selected.provider,
+    model: selected.model,
+    ...('reasoningEffort' in selected && selected.reasoningEffort !== undefined
+      ? { reasoningEffort: selected.reasoningEffort } : {}),
+  }
   const oldVersion = view !== undefined && view !== null && latestRole !== undefined && view.workspace.role.revision !== latestRole.revision
   const pending = view?.proposals.some(proposal =>
     proposal.changes.some(change => !proposal.applied.includes(change.field) && !proposal.ignored.includes(change.field)),
@@ -58,7 +77,7 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
   }, [key, backend, latestRole?.revision, studioActions])
   const send = (): void => {
     if (id && !disabled && !saveFirst && !running && !query?.busy && !query?.retry && !oldVersion && prompt.trim())
-      void studioActions.send(id, revision, input, prompt)
+      void studioActions.send(id, revision, input, prompt, selection ?? undefined)
   }
   const targetName =
     target.kind === 'creation'
@@ -86,10 +105,17 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
         >
           {t('agentConfig')}
         </Button>
+        {view && <Button onClick={() => void studioActions.refresh(view.workspace.id)}>{t('assistantRefresh')}</Button>}
       </header>
       <p className={css.contextLine}>
         {t('assistantContext', { name: targetName, version: revision === null ? t('creationDraft') : t('revision', { revision }) })}
       </p>
+      {outline && (
+        <section className={css.assistantMission} aria-label={t('outlineMission')}>
+          <strong>{t('outlineMission')}</strong>
+          <p>{t('outlineMissionHint')}</p>
+        </section>
+      )}
       {!backend ? (
         <div className={css.notice}>
           <p>{t('assistantUnavailable')}</p>
@@ -108,64 +134,69 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
           )}
           {view && (
             <>
-              <label className={css.field}>
-                {t('workspaceVersion')}
-                <select
-                  value={view.workspace.id}
-                  onChange={event => void studioActions.selectVersion(target, event.target.value as typeof view.workspace.id)}
-                >
-                  {view.versions.map(version => (
-                    <option key={version.id} value={version.id}>
-                      {t('roleVersion', { revision: version.roleRevision })}
-                      {version.running ? ` · ${t('taskRunning')}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {oldVersion && (
-                <div className={css.notice}>
-                  <p>{t('olderWorkspace')}</p>
-                  <Button onClick={() => void studioActions.open(target)}>{t('openLatestWorkspace')}</Button>
-                </div>
-              )}
-              <details className={css.capabilities}>
-                <summary>{t('capabilities')}</summary>
-                <p>{t('roleVersion', { revision: view.workspace.role.revision })}</p>
-                {view.workspace.resolved && (
-                  <p>
-                    {view.workspace.resolved.provider} / {view.workspace.resolved.model}
-                  </p>
+              <details className={css.assistantSettings}>
+                <summary>{t('assistantSettings')}</summary>
+                <label className={css.field}>
+                  {t('workspaceVersion')}
+                  <select
+                    value={view.workspace.id}
+                    onChange={event => void studioActions.selectVersion(target, event.target.value as typeof view.workspace.id)}
+                  >
+                    {view.versions.map(version => (
+                      <option key={version.id} value={version.id}>
+                        {t('roleVersion', { revision: version.roleRevision })}
+                        {version.running ? ` · ${t('taskRunning')}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {oldVersion && (
+                  <div className={css.notice}>
+                    <p>{t('olderWorkspace')}</p>
+                    <Button onClick={() => void studioActions.open(target)}>{t('openLatestWorkspace')}</Button>
+                  </div>
                 )}
-                <p>
-                  {t('skills')}: {view.workspace.role.config.skills.join(', ') || t('noSkills')}
-                </p>
-                <p>
-                  {t('contextTools')}: {view.workspace.role.config.tools.join(', ') || t('noContextTools')}
-                </p>
-                <p>{t('rolePermissions')}</p>
+                <div className={css.assistantOptions}>
+                  <details className={css.capabilities}>
+                    <summary>{t('capabilities')}</summary>
+                    <p>{t('roleVersion', { revision: view.workspace.role.revision })}</p>
+                    {selection && (
+                      <p>
+                        {selection.provider} / {selection.model}
+                      </p>
+                    )}
+                    <p>
+                      {t('skills')}: {view.workspace.role.config.skills.join(', ') || t('noSkills')}
+                    </p>
+                    <p>
+                      {t('contextTools')}: {view.workspace.role.config.tools.join(', ') || t('noContextTools')}
+                    </p>
+                    <p>{t('rolePermissions')}</p>
+                  </details>
+                  <details className={css.capabilities}>
+                    <summary>{t('fieldLocks')}</summary>
+                    <p>{t('lockHint')}</p>
+                    {view.allowedFields.map(field => (
+                      <label className={css.checkRow} key={field}>
+                        <input
+                          type="checkbox"
+                          disabled={disabled || query.busy}
+                          checked={view.lockedFields.includes(field)}
+                          onChange={event =>
+                            void studioActions.locks(
+                              view,
+                              event.target.checked ? [...view.lockedFields, field] : view.lockedFields.filter(value => value !== field),
+                            )
+                          }
+                        />
+                        {t(fieldKeys[field])}
+                      </label>
+                    ))}
+                  </details>
+                </div>
               </details>
-              <details className={css.capabilities}>
-                <summary>{t('fieldLocks')}</summary>
-                <p>{t('lockHint')}</p>
-                {view.allowedFields.map(field => (
-                  <label className={css.checkRow} key={field}>
-                    <input
-                      type="checkbox"
-                      disabled={disabled || query.busy}
-                      checked={view.lockedFields.includes(field)}
-                      onChange={event =>
-                        void studioActions.locks(
-                          view,
-                          event.target.checked ? [...view.lockedFields, field] : view.lockedFields.filter(value => value !== field),
-                        )
-                      }
-                    />
-                    {t(fieldKeys[field])}
-                  </label>
-                ))}
-              </details>
-              <div className={css.dialogue} aria-label={t('assistantReply')}>
-                {view.tasks.length === 0 && <p className={css.emptyDialogue}>{t('noDialogue')}</p>}
+              <div ref={dialogue} className={css.dialogue} aria-label={t('assistantReply')}>
+                {view.tasks.length === 0 && <p className={css.emptyDialogue}>{t(outline ? 'outlineEmptyDialogue' : 'noDialogue')}</p>}
                 {view.tasks.map(task => (
                   <article className={css.dialogueTurn} key={task.id}>
                     <div className={css.userBubble}>
@@ -183,7 +214,7 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                       {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'interrupted') && (
                         <Button
                           disabled={disabled || query.busy || !!running || oldVersion || !!query.retry}
-                          onClick={() => void studioActions.send(view.workspace.id, revision, input, task.prompt)}
+                          onClick={() => void studioActions.send(view.workspace.id, revision, input, task.prompt, selection ?? undefined)}
                         >
                           {t('taskRetry')}
                         </Button>
@@ -192,8 +223,9 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                     {view.proposals
                       .filter(proposal => proposal.taskId === task.id)
                       .map((proposal) => {
-                        const selected = (state.proposalSelection[proposal.id] ?? []).filter(
-                          field => !proposal.applied.includes(field) && !proposal.ignored.includes(field),
+                        const selected = (outline ? ['outline'] as const : state.proposalSelection[proposal.id] ?? []).filter(
+                          field => proposal.changes.some(change => change.field === field) &&
+                            !proposal.applied.includes(field) && !proposal.ignored.includes(field),
                         )
                         return (
                           <section className={css.proposalCard} key={proposal.id} aria-label={t('proposal')}>
@@ -205,14 +237,14 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                               return (
                                 <div className={css.proposalField} key={change.field}>
                                   <label className={css.checkRow}>
-                                    <input
+                                    {!outline && <input
                                       type="checkbox"
                                       checked={selected.includes(change.field)}
                                       disabled={disabled || applied || ignored || query.busy}
                                       onChange={(event) => {
                                         actions.proposalField(proposal.id, change.field, event.target.checked)
                                       }}
-                                    />
+                                    />}
                                     {t(fieldKeys[change.field])}
                                     {(applied || ignored || locked) && (
                                       <span>{t(applied ? 'proposalApplied' : ignored ? 'proposalIgnored' : 'protected')}</span>
@@ -245,16 +277,16 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                                   })
                                 }
                               >
-                                {t('applySelected')}
+                                {t(outline ? 'outlineApply' : 'applySelected')}
                               </Button>
                               <Button
                                 disabled={disabled || query.busy || selected.length === 0}
                                 onClick={() => void studioActions.ignore(view.workspace.id, proposal.id, selected)}
                               >
-                                {t('ignoreSelected')}
+                                {t(outline ? 'outlineIgnore' : 'ignoreSelected')}
                               </Button>
                             </div>
-                            <p>{t('proposalHint')}</p>
+                            <p>{t(outline ? 'outlineApplyHint' : 'proposalHint')}</p>
                           </section>
                         )
                       })}
@@ -265,7 +297,7 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                 <p role="status" className={css.notice}>
                   {t(
                     query.outcome === 'applied'
-                      ? 'proposalApplied'
+                      ? outline ? 'outlineApplied' : 'proposalApplied'
                       : query.outcome === 'locked'
                         ? 'proposalLocked'
                         : query.outcome === 'archived'
@@ -294,46 +326,42 @@ export function AssistantPanel({ state, studio, studioActions, target, input, re
                   </Button>
                 </div>
               )}
-              <Button onClick={() => void studioActions.refresh(view.workspace.id)}>{t('refresh')}</Button>
+
             </>
           )}
         </>
       )}
-      <form
-        className={css.assistantComposer}
-        onSubmit={(event) => {
-          event.preventDefault()
-          send()
-        }}
-      >
+      <div className={css.assistantComposer}>
+        {outline && (
+          <div className={css.outlineActions}>
+            {(['outlineGenerate', 'outlineImprove', 'outlineCheck'] as const).map(action => (
+              <Button key={action}
+                disabled={!backend || disabled || !!running || !!query?.busy || !!query?.retry || oldVersion ||
+                  !!prompt.trim() || (action !== 'outlineGenerate' && !input.outline.trim())}
+                onClick={() => { actions.assistantPrompt(key, t(`${action}Prompt`)) }}
+              >
+                {t(action)}
+              </Button>
+            ))}
+          </div>
+        )}
         {saveFirst && <p>{t('saveEpisodeFirst')}</p>}
         {target.kind === 'creation' && <p>{t('creationSendHint')}</p>}
-        <textarea
-          rows={4}
-          aria-label={t('assistantMessage')}
-          placeholder={t('assistantPlaceholder')}
-          value={prompt}
-          disabled={!backend || disabled}
-          onChange={(event) => {
-            actions.assistantPrompt(key, event.target.value)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && event.shiftKey) {
-              event.preventDefault()
-              send()
-            }
-          }}
-        />
-        <Button
-          variant="primary"
-          type="submit"
-          disabled={
-            !backend || !view || disabled || saveFirst || !prompt.trim() || !!running || query.busy || !!query.retry || oldVersion
-          }
-        >
-          {t('send')}
-        </Button>
-      </form>
+        {renderSlot('multica.assistant.composer', {
+          value: prompt,
+          label: t('assistantMessage'),
+          placeholder: t(outline ? 'outlinePlaceholder' : 'assistantPlaceholder'),
+          disabled: !backend || disabled,
+          sendDisabled: !backend || !view || disabled || !!saveFirst || !prompt.trim() ||
+            !!running || query.busy || !!query.retry || oldVersion,
+          modelLocked: !backend || disabled || !!running || !!query?.busy || !!query?.retry || oldVersion,
+          selection,
+          onChange: (value) => { actions.assistantPrompt(key, value) },
+          onSelect: (model) => { actions.assistantModel(key, model) },
+          onSend: send,
+          ...(running ? { onStop: () => { void studioActions.cancel(running) } } : {}),
+        })}
+      </div>
     </aside>
   )
 }

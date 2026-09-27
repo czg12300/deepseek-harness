@@ -1,5 +1,5 @@
 /** Complete manual project form shared by creation and project settings. */
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ProjectInput } from '@deepseek-ai/dsh-api-remotes/client'
@@ -13,10 +13,11 @@ type FieldsProps = PropsLocale<'multica'> & {
   change: (patch: Partial<ProjectInput>) => void
   disabled?: boolean
   creation?: boolean
+  location?: ReactNode
 }
 
 /** @param props - current draft fields and localized labels. @returns the project specification form. */
-export function ProjectFields({ input, change, disabled, creation = false, t }: FieldsProps) {
+export function ProjectFields({ input, change, disabled, creation = false, location, t }: FieldsProps) {
   const fieldId = useId()
   const nameLength = Array.from(input.name).length
   const conceptLength = Array.from(input.concept).length
@@ -66,6 +67,7 @@ export function ProjectFields({ input, change, disabled, creation = false, t }: 
         />
         <small id={`${fieldId}-name-count`}>{t('nameCount', { count: nameLength })}</small>
       </label>
+      {location}
       {conceptField}
       <fieldset className={css.ratios}>
         <legend>{t('ratio')}</legend>

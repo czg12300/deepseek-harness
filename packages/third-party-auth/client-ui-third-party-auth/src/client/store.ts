@@ -94,8 +94,18 @@ export class AccountPageStore {
             }); break
           case 'prompt': this.state.update((value) => { value.prompt = { id: event.id, value: event.prompt } }); break
           case 'withdrawn': this.state.update((value) => { if (value.prompt?.id === event.id) value.prompt = null }); break
-          case 'settled': this.state.update((value) => {
-            value.message = event.status === 'connected' ? 'connectedNotice' : event.status === 'cancelled' ? 'cancelled' : 'failed'
+          case 'settled': this.revision++; this.state.update((value) => {
+            const account = value.accounts.find(account => account.id === provider)
+            if (account !== undefined) {
+              account.connecting = false
+              if (event.status === 'connected') {
+                account.connected = true
+                account.enabled = true
+              }
+            }
+            value.message = event.status === 'connected' ? 'connectedNotice' : event.status === 'cancelled' ? 'cancelled'
+              : event.reason === 'timeout' ? 'loginTimedOut' : event.reason === 'activation' ? 'activationFailed'
+                : event.reason === 'authorization' ? 'authorizationFailed' : 'failed'
           }); break
         }
       }

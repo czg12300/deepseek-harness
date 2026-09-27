@@ -2,9 +2,12 @@
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 import type {
+  ModelSelection,
   EpisodeId,
   Project,
   ProjectId,
+  ScriptDocumentId,
+  ProductionUnitId,
   ProjectInput,
   StudioCreationId,
   StudioCreationDraft,
@@ -27,7 +30,8 @@ export interface ProjectDraft {
 }
 
 /** Project-local navigation, including the selected episode. */
-export type ProjectPage = 'outline' | 'episodes' | 'settings' | 'history' | 'reviews' | EpisodeId
+export type ProjectPage = 'outline' | 'episodes' | 'settings' | 'history' | 'reviews' | 'assets' |
+  EpisodeId | ScriptDocumentId | ProductionUnitId
 
 /** Unpublished human edits retain the role version they started from. */
 export interface RoleDraft {
@@ -40,10 +44,11 @@ export interface RoleDraft {
 /** Root view state; durable projects belong to the remote query model. */
 export interface MulticaDrafts {
   selected: ProjectId | null
-  management: 'roles' | 'reviews' | null
+  management: 'roles' | 'reviews' | 'actors' | null
   creationId: StudioCreationId
   createRevision: number | null
   assistantPrompts: Record<string, string>
+  assistantModels: Record<string, ModelSelection>
   proposalSelection: Record<StudioProposalId, StudioField[]>
   selectedRole: StudioRoleId
   roleDrafts: Partial<Record<StudioRoleId, RoleDraft>>
@@ -150,9 +155,12 @@ export function mergeAppliedInput(
 }
 
 type DraftActions = {
+  restoreBuffer: (d: MulticaDrafts, id: ProjectId, buffer: { baseRevision: number; input: ProjectInput }) => void
+  closeProject: (d: MulticaDrafts, id: ProjectId | null) => void
   creationSaved: (d: MulticaDrafts, draft: StudioCreationDraft, submitted: ProjectInput) => void
   restoreCreation: (d: MulticaDrafts, draft: StudioCreationDraft, discard?: boolean) => void
-  manage: (d: MulticaDrafts, page: 'roles' | 'reviews' | null) => void
+  manage: (d: MulticaDrafts, page: 'roles' | 'reviews' | 'actors' | null) => void
+  assistantModel: (d: MulticaDrafts, key: string, selection: ModelSelection) => void
   assistantPrompt: (d: MulticaDrafts, key: string, text: string) => void
   promptSubmitted: (d: MulticaDrafts, key: string, text: string) => void
   proposalField: (d: MulticaDrafts, id: StudioProposalId, field: StudioField, checked: boolean) => void
@@ -198,6 +206,7 @@ export function createMulticaStore(): EngineStoreHandle<MulticaDrafts, DraftActi
       creationId: randomUUID() as StudioCreationId,
       createRevision: null,
       assistantPrompts: {},
+      assistantModels: {},
       proposalSelection: {},
       selectedRole: 'planner',
       roleDrafts: {},
@@ -214,6 +223,27 @@ export function createMulticaStore(): EngineStoreHandle<MulticaDrafts, DraftActi
       sort: 'updated',
     }),
     actions: {
+      restoreBuffer: (d, id, buffer) => {
+        const current = d.drafts[id]
+        if (!current || current.dirty || JSON.stringify(current.input) === JSON.stringify(buffer.input)) return
+        d.drafts[id] = {
+          input: buffer.input, baseRevision: buffer.baseRevision, dirty: true, edit: current.edit + 1,
+          conflict: current.baseRevision !== buffer.baseRevision,
+        }
+      },
+      closeProject: (d, id) => {
+        if (id) d.drafts = Object.fromEntries(Object.entries(d.drafts).filter(([key]) => key !== id))
+        else {
+          d.creationId = randomUUID() as StudioCreationId
+          d.createRevision = null
+          d.createInput = emptyInput()
+          d.createDirty = false
+          d.createEdit = 0
+        }
+        d.selected = null
+        d.creating = false
+        d.management = null
+      },
       creationSaved: (d, draft: StudioCreationDraft, submitted: ProjectInput) => {
         if (draft.id !== d.creationId || (d.createRevision !== null && d.createRevision > draft.revision)) return
         d.createRevision = draft.revision
@@ -235,9 +265,10 @@ export function createMulticaStore(): EngineStoreHandle<MulticaDrafts, DraftActi
           d.createEdit++
         }
       },
-      manage: (d, page: 'roles' | 'reviews' | null) => {
+      manage: (d, page: 'roles' | 'reviews' | 'actors' | null) => {
         d.management = page
       },
+      assistantModel: (d, key, selection) => { d.assistantModels[key] = selection },
       assistantPrompt: (d, key: string, text: string) => {
         d.assistantPrompts[key] = text
       },

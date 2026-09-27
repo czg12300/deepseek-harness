@@ -1,13 +1,14 @@
 /** Remote query projection and request ownership; drafts remain in the declared editor store. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { Project, ProjectId, ProjectInput, ProjectSummary, ProjectCover, SaveResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Project, ProjectId, ProjectInput, ProjectSummary, ProjectCover, SaveResult, StudioFolder } from '@deepseek-ai/dsh-api-remotes/client'
 import type { createMulticaStore, ProjectDraft } from './drafts.ts'
 
 type Actions = BoundActions<ReturnType<typeof createMulticaStore>>
 
 /** Injected wire operations, kept separate from the generated service object's identity. */
 export interface ProjectApi {
+  folders?: () => Promise<StudioFolder[]>
   coverUploadLimit: () => Promise<number>
   setCover: (id: ProjectId, revision: number, image: string | null) => Promise<ProjectCover>
   list: () => Promise<ProjectSummary[]>
@@ -32,6 +33,9 @@ export interface ProjectQuery {
 
 /** Remote observations published through the injected framework hook. */
 export interface ProjectQueries {
+  lifecycleBusy?: boolean
+  closedFolder?: StudioFolder['id']
+  folders?: StudioFolder[]
   maxCoverBytes: number | null
   covers: Record<ProjectId, { saving: boolean; error: boolean }>
   list: ProjectSummary[]
@@ -100,9 +104,11 @@ export class ProjectModel {
     })
     try {
       const [list, maxCoverBytes] = await Promise.all([this.api.list(), this.api.coverUploadLimit()])
+      const folders = await this.api.folders?.()
       if (this.active() && request === this.listRequest)
         this.source.update((d) => {
           d.list = list
+          if (folders) d.folders = folders
           d.maxCoverBytes = maxCoverBytes
           d.loading = false
         })
@@ -225,10 +231,11 @@ export class ProjectModel {
    * @param draft - submitted input, edit counter, and base revision.
    * @param actions - declared draft actions.
    * @param archived - archive transition, or undefined for a content save.
+   * @returns true when the Host committed the change; false on conflict or failure.
    */
-  async save(id: ProjectId, draft: ProjectDraft, actions: Actions, archived?: boolean): Promise<void> {
+  async save(id: ProjectId, draft: ProjectDraft, actions: Actions, archived?: boolean): Promise<boolean> {
     const query = requireQuery(this.source.getSnapshot(), id)
-    if (!this.active() || query.saving) return
+    if (!this.active() || query.saving) return false
     this.source.update((d) => {
       requireQuery(d, id).saving = true
       requireQuery(d, id).error = false
@@ -240,7 +247,7 @@ export class ProjectModel {
         archived === undefined
           ? await this.api.save(id, draft.baseRevision, draft.input)
           : await this.api.setArchived(id, draft.baseRevision, archived)
-      if (!this.active()) return
+      if (!this.active()) return false
       const project = this.accept(result.project)
       if (result.status === 'saved') {
         if (archived !== undefined && draft.dirty) actions.received(project)
@@ -251,11 +258,13 @@ export class ProjectModel {
       } else actions.conflicted(id)
       void this.list()
       void this.history(id)
+      return result.status === 'saved'
     } catch {
       if (this.active())
         this.source.update((d) => {
           requireQuery(d, id).error = true
         })
+      return false
     } finally {
       if (this.active())
         this.source.update((d) => {

@@ -29,6 +29,8 @@ Mount one persistence backend to make sessions durable. The backend registers it
 
 ### Choosing a backend
 
+`registerStore({ owns, backend })` optionally mounts project-owned persistence behind the deployment provider. Unsupported providers reject registration. The project owner registers before creating its Sessions, retains the route through handle closure, and supplies a disposer-owned identity predicate. Routing does not change the handle contract or allow rewriting Session history.
+
 The seam ships the [JSONL](../session-persistence-jsonl/README.md) backend: one append-only `.jsonl.zstd` log per session. A third-party backend may implement the service directly; the [backend contract](#understand-the-implementation) below is what it must honor.
 
 ### What the service provides

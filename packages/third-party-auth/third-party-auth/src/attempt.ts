@@ -28,7 +28,9 @@ export class ConnectAttempt<Extra = never> implements ConnectInteraction {
     this.withdraw = () => { this.controller.abort() }
     parent.addEventListener('abort', this.withdraw, { once: true })
     if (parent.aborted) this.withdraw()
-    this.timer = setTimeout(this.withdraw, timeoutMs)
+    this.timer = setTimeout(() => {
+      this.controller.abort(new DOMException('Account authorization timed out', 'TimeoutError'))
+    }, timeoutMs)
     this.push({ kind: 'started', attemptId: this.id })
   }
 

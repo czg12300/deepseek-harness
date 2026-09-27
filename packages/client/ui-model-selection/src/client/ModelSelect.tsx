@@ -23,6 +23,7 @@ import {
   IconDataOutline16, IconWarningOutline16, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ModelDirectoryState } from './directory.ts'
 import type { ModelSelectInjected } from './slots.ts'
 import css from './ModelSelect.module.css'
 
@@ -53,6 +54,22 @@ export function ModelSelect(
     fn => directory.subscribe(fn),
     () => directory.getSnapshot(),
   )
+  return <ModelSelectView
+    locked={locked} available={available} state={state} load={load} select={select}
+    selectionError={() => directory.getSnapshot().error} t={t}
+  />
+}
+
+/** @param props - model catalog, effective selection, and owning mutation callbacks. @returns the shared model and effort menu. */
+export function ModelSelectView({ locked, available, state, load, select, selectionError, showLabel = false, t }: PropsLocale<'model'> & {
+  locked: boolean
+  available: boolean
+  state: ModelDirectoryState
+  load: () => void
+  select: (selection: ModelSelection) => Promise<boolean>
+  selectionError: () => string | null
+  showLabel?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [pane, setPane] = useState<Pane>('root')
   // The in-menu error strip serves catalog loads (its Retry re-runs the
@@ -207,7 +224,7 @@ export function ModelSelect(
       if (rootRef.current !== null) close(true)
       return
     }
-    const message = directory.getSnapshot().error
+    const message = selectionError()
     if (message !== null) {
       toastSeq.current += 1
       setToast({ seq: toastSeq.current, text: t('error.action', { message }) })
@@ -259,7 +276,7 @@ export function ModelSelect(
   }
 
   return (
-    <div ref={rootRef} className={css.root} onKeyDown={onRootKeyDown} onBlur={onBlur}>
+    <div ref={rootRef} className={clsx(css.root, showLabel && css.standalone)} onKeyDown={onRootKeyDown} onBlur={onBlur}>
       <button
         ref={triggerRef}
         type="button"

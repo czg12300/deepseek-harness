@@ -8,6 +8,8 @@ The [account group](../../packages/third-party-auth/README.md) owns optional acc
 
 Authentication, integration enablement, and model-catalog availability are separate facts. A private authorization stream carries an attempt capability and prompt IDs; replies need both. Settings persist only non-secret preferences. GPT grants stay in their pi-ai record, while the unmodified Claude CLI manages its own configuration directory.
 
+Private `settled` events may carry a secret-free `reason`: `authorization`, `activation`, or `timeout`. Only completed credential storage and account activation produce `connected`. A ChatGPT connection can resume activation from a stored grant; a user cancellation remains `cancelled`.
+
 ## Native conversations
 
 Native conversation IDs belong to the optional plugin, not the default Harness Agent factory. The SQLite domain mirrors native SDK transcript records and retains subagent streams for official resume. Displayed text is a projection of that mirror; it is not a conversion to the released Harness Session format. Closing the native stream cancels its current turn and waits for managed-process cleanup.

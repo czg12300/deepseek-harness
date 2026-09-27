@@ -27,7 +27,7 @@ Run `dsh --profile web` to open an interactive browser GUI with chat, model and 
 
 Start the GUI, open your browser, and start talking to the agent. The flags fine-tune the invocation.
 
-The left sidebar's [Comics workspace](../../client/ui-multica/README.md) manages Multica projects and manual drafts. Project creation and editing do not start model calls.
+The default composition includes [Third-party authorization](../../third-party-auth/client-ui-third-party-auth/README.md) in Settings and the left sidebar's [Comics workspace](../../client/ui-multica/README.md), without extra patches. Account connections require an explicit sign-in. Project creation and editing do not start model calls.
 
 The sidebar [Novels workspace](../../client/ui-novel/README.md) manages directory-backed manuscripts, document editing and human-applied Agent suggestions.
 

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/multica/studio-core/README.md
-README.md: 842651527b20c5437f2e179a19810f8fd923d3c2
-README.zh.md: f891dcd4f8deecec83e24330ab251f867780e761
+README.md: 74896cd608e2435754b65fbb0a6248f7e614bc0a
+README.zh.md: bf64000aae061e8e357f1901b5f13b95d087910a

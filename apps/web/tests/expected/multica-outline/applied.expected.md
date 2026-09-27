@@ -1,0 +1,79 @@
+- region "Comics workspace":
+  - text: Project folder
+  - textbox "Project folder":
+    - /placeholder: Enter an absolute directory on this device
+  - button "Choose folder"
+  - paragraph: This work is still in the device database. Save your changes before copying it to a portable folder. The original data will be retained.
+  - button "Copy to project folder" [disabled]
+  - navigation "Series planning":
+    - button "Back to all projects"
+    - text: Select project
+    - combobox "Select project":
+      - option "All projects"
+      - option "Outline workshop" [selected]
+      - option "New project"
+    - paragraph: Series planning
+    - button "Story outline"
+    - button "Episodes"
+    - paragraph: Shared library
+    - button "Characters and looks" [disabled]
+    - button "Scenes" [disabled]
+    - button "Props" [disabled]
+    - paragraph: Production management
+    - button "Awaiting review"
+    - button "Generation tasks" [disabled]
+    - button "Agent configuration"
+    - button "Version history"
+    - button "Project settings"
+  - main:
+    - paragraph: Outline workshop
+    - heading "Story outline" [level=1]
+    - text: Version 2
+    - paragraph: Write the series story here, or ask the planning assistant to draft it and apply the result here to continue editing.
+    - region "Creative starting point":
+      - strong: Creative starting point
+      - paragraph: A lighthouse keeper saves her village.
+    - text: Story outline
+    - textbox "Story outline":
+      - /placeholder: Develop the main story, character arcs, and world rules here.
+      - text: "Premise: Mira inherits a lighthouse. Conflict: The village wants it closed. Ending: She lights a safe route home."
+    - status: Saved
+    - button "Submit for review"
+    - button "Save draft" [disabled]
+    - paragraph: Drafts survive project and page navigation. Save or export before closing or refreshing this page.
+    - button "Export local draft"
+  - complementary "Planning assistant":
+    - heading "Planning assistant" [level=2]
+    - text: Ready for a request
+    - button "Agent configuration"
+    - button "Refresh conversation"
+    - paragraph: "Current target: Story outline · Version 2"
+    - region "Create the story outline on the left":
+      - strong: Create the story outline on the left
+      - paragraph: Develop the plot, character arcs and ending from your project concept and current draft. Apply the generated outline directly to the editor.
+    - group: Work history and settings
+    - article:
+      - strong: Your request
+      - paragraph: Develop the current story outline in the editor. Strengthen character motivations, causality, pacing and the ending while preserving the core setting. Explain the main changes and return the complete revised text as an outline proposal I can apply to the editor.
+      - strong: Planning assistant
+      - text: Completed
+      - paragraph: The outline is ready to apply.
+      - region "Change proposal":
+        - heading "Change proposal" [level=3]
+        - text: Story outline Applied to the draft
+        - group: Before
+        - strong: Proposed content
+        - text: "Premise: Mira inherits a lighthouse. Conflict: The village wants it closed. Ending: She lights a safe route home."
+        - button "Apply to outline editor" [disabled]
+        - button "Ignore this outline" [disabled]
+        - paragraph: Applying updates the editor and saves a draft version you can restore from history. Submit content for review separately.
+    - status: Story outline updated in the editor and saved as a draft version
+    - button "Draft story outline"
+    - button "Develop current outline"
+    - button "Check story logic"
+    - textbox "Request for the professional assistant":
+      - /placeholder: "For example: Draft an outline from the project concept, with a clear character motivation and a twist ending…"
+    - button "Select model, current Outline writer":
+      - text: Outline writer
+      - img
+    - button "Send message" [disabled]

@@ -44,6 +44,10 @@ pnpm dsh web
 
 `pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
 
+在 macOS 或 Linux 上，从仓库运行 [`./startup.sh`](startup.sh)，即可一次完成依赖检查、安装、编译和 Web 启动。请先安装带开发头文件的 Node.js 22.19+（22.x）或 24+、Python 3、make 和 C/C++ 编译器；脚本会提示缺失的工具，并在需要时通过 Corepack 或 npx 获取仓库指定版本的 pnpm。打开启动后打印的完整认证链接，并保持终端运行；按 Ctrl+C 停止服务。使用 `./startup.sh --port 8080` 指定端口，或追加 `--no-open` 跳过自动打开浏览器。
+
+脚本默认将配置、设置和历史记录保存在仓库内被 Git 忽略的 `.dsh-local/`，与使用 `~/.dsh` 的桌面应用隔离。显式设置 `DSH_HOME` 可复用其他数据目录。启动输出会标明源码目录和数据目录。
+
 ## 社区与支持
 
 - 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

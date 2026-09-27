@@ -138,6 +138,17 @@ export abstract class SessionPersistence extends Service {
   }
 
   /**
+   * Route explicitly owned sessions to a mounted project store. Backends without
+   * routing support reject; callers must keep the registration until handles close.
+   * @param store - project-owned persistence and identity predicate.
+   * @returns disposer removing the route after its owner has drained sessions.
+   */
+  registerStore(store: SessionPersistenceStore): () => Promise<void> {
+    void store
+    throw new Error('This session persistence provider does not support project stores')
+  }
+
+  /**
    * Create a new stored session and take its write ownership.
    * @param header - the immutable header (id, version, cwd, lineage) to store.
    * @param options - optional cancellation.
@@ -199,3 +210,11 @@ export abstract class SessionPersistence extends Service {
 }
 
 export default SessionPersistence
+
+/** Project-local storage mounted behind the deployment's persistence provider. */
+export interface SessionPersistenceStore {
+  /** Whether this project owns the reserved or persisted session identity. */
+  owns(id: SessionId): boolean
+  /** Provider operations retain the same handle and durability semantics. */
+  backend: Pick<SessionPersistence, 'create' | 'open' | 'stat' | 'list' | 'flush'>
+}

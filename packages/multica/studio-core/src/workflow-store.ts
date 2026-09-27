@@ -373,7 +373,8 @@ export class StudioWorkflowStore {
           task.workspaceId !== input.workspaceId ||
           task.prompt !== input.prompt ||
           task.expectedRevision !== input.expectedRevision ||
-          !same(task.input, input.input)
+          !same(task.input, input.input) ||
+          !same(task.modelSelection ?? null, input.modelSelection ?? null)
         )
           throw new Error('A task request ID cannot be reused with different input')
         return { task, created: false }
@@ -405,7 +406,8 @@ export class StudioWorkflowStore {
         requestId: input.requestId,
         target: workspace.target,
         role: workspace.role,
-        resolved: bound.resolved,
+        resolved: dependencies,
+        modelSelection: input.modelSelection,
         sessionId: workspace.sessionId,
         expectedRevision: input.expectedRevision,
         input: input.input,
@@ -439,6 +441,7 @@ export class StudioWorkflowStore {
       roleRevision: task.role.revision,
       provider: task.resolved.provider,
       model: task.resolved.model,
+      ...(task.resolved.reasoningEffort === undefined ? {} : { reasoningEffort: task.resolved.reasoningEffort }),
       expectedRevision: task.expectedRevision,
       prompt: task.prompt,
       status: task.status,
@@ -469,7 +472,9 @@ export class StudioWorkflowStore {
       task.sessionId !== workspace.sessionId ||
       !same(task.target, workspace.target) ||
       !same(task.role, workspace.role) ||
-      !same(task.resolved, workspace.resolved)
+      !same(task.resolved, task.modelSelection
+        ? { ...workspace.resolved, reasoningEffort: undefined, ...task.modelSelection }
+        : workspace.resolved)
     )
       throw new Error('Task context differs from its workspace binding')
     if (task.target.kind !== 'creation') projectInputSchema.parse(task.input)

@@ -41,7 +41,7 @@ export interface Config {
 export const name = 'third-party-auth'
 export const inject = ['authorization', 'credentials', 'settings', 'llm', 'subprocess']
 export const Config: Schema<Config> = Schema.object({
-  connectTimeoutMs: Schema.number().min(1).max(2_147_483_647).default(180_000),
+  connectTimeoutMs: Schema.number().min(1).max(2_147_483_647).default(900_000),
   maxQueuedEvents: Schema.number().min(4).max(1024).step(1).default(64),
   cwd: Schema.string().default(homedir()),
   graceMs: Schema.number().min(1).max(2_147_483_647).default(3000),

@@ -215,7 +215,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/api/session-controller/src/index.ts:69`](../packages/api/session-controller/src/index.ts)
+来源：[`packages/api/session-controller/src/index.ts:71`](../packages/api/session-controller/src/index.ts)
 
 <a id="deepseek-aidsh-api-settings-controller"></a>
 
@@ -2018,7 +2018,7 @@ export interface Config {
 export type JsonlCompression = 'zstd' | 'none'
 ```
 
-来源：[`packages/session/session-persistence-jsonl/src/index.ts:88`](../packages/session/session-persistence-jsonl/src/index.ts)
+来源：[`packages/session/session-persistence-jsonl/src/index.ts:89`](../packages/session/session-persistence-jsonl/src/index.ts)
 
 <a id="deepseek-aidsh-session-projection-cache"></a>
 
@@ -2442,7 +2442,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/multica/studio-agents/src/index.ts:32`](../packages/multica/studio-agents/src/index.ts)
+Source: [`packages/multica/studio-agents/src/index.ts:43`](../packages/multica/studio-agents/src/index.ts)
 
 <a id="deepseek-aidsh-studio-core"></a>
 
@@ -2471,7 +2471,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/multica/studio-core/src/index.ts:56`](../packages/multica/studio-core/src/index.ts)
+Source: [`packages/multica/studio-core/src/index.ts:54`](../packages/multica/studio-core/src/index.ts)
 
 <a id="deepseek-aidsh-subagent-acp"></a>
 
@@ -2830,7 +2830,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/context/time-context/src/index.ts:48`](../packages/context/time-context/src/index.ts)
+来源：[`packages/context/time-context/src/index.ts:49`](../packages/context/time-context/src/index.ts)
 
 <a id="deepseek-aidsh-tmux-context"></a>
 

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-10-multica-project-revisions.md
-2026-09-10-multica-project-revisions.md: 1333ae391dc38d4e052c4c02801767977898e2b9
-2026-09-10-multica-project-revisions.zh.md: 59d5af78c482b181fa57173c051abc905973b661
+2026-09-10-multica-project-revisions.md: 2c62a734000198eecc956690d54f71e77cb3b21c
+2026-09-10-multica-project-revisions.zh.md: 772a69eb9b70ceac822224c78a0c8dbbd42645c0

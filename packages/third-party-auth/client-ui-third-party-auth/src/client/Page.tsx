@@ -25,6 +25,7 @@ export function Page({ controller, useAccounts, t, local, startSession, close }:
   const cancel = () => { controller.cancel(); setDisconnect(null); setAnswer('') }
   return <section className={css.page}>
     <h2>{t('nav')}</h2><p className={css.intro}>{t('intro')}</p>
+    {state.message && <p role="status" className={css.message}>{t(state.message)}</p>}
     {!local && <p role="status">{t('localOnly')}</p>}
     {state.loading && <p role="status">{t('loading')}</p>}
     {state.accounts.map((account) => {
@@ -61,12 +62,12 @@ export function Page({ controller, useAccounts, t, local, startSession, close }:
         </div> : <div className={css.details}>
           <p className={css.hint}>{t(account.id === 'chatgpt' ? 'loginHint' : 'claudeHint')}</p>
           <button className={css.primary} disabled={!local || state.busy || account.unavailable !== undefined}
-            onClick={() => { void controller.connect(account.id) }}>{t(account.id === 'chatgpt' ? 'loginChatgpt' : 'loginClaude')}</button>
+            onClick={() => { void controller.connect(account.id) }}>{t(account.id === 'chatgpt'
+              ? account.connected ? 'resumeConnection' : 'loginChatgpt' : 'loginClaude')}</button>
         </div>}
       </article>
     })}
     <p className={css.hint}>{t('availableHint')}</p>
-    <p role="status" className={css.message}>{state.message && t(state.message)}</p>
     {startFailed && <p role="alert">{t('failed')}</p>}
     {!state.loading && state.accounts.length === 0 && <button onClick={() => { void controller.load() }}>{t('retry')}</button>}
     <dialog ref={dialog} className={css.dialog} onCancel={(event) => { event.preventDefault(); cancel() }}>

@@ -34,6 +34,9 @@ export function chatgptProvider(ctx: Context): AccountProvider {
     async connect(interaction) {
       const route = routes()['openai-codex']
       if (route !== undefined && (!owned() || route.apiKeyEnv !== undefined)) throw new Error('Codex route has independent configuration')
+      interaction.signal.throwIfAborted()
+      const credential = await ctx.credentials.describeRecord(KEY)
+      if (credential.configured && credential.kind === 'grant') return true
       const result = await ctx.authorization.begin({
         key: KEY, method: 'oauth', signal: interaction.signal,
         interaction: { notify: notice => interaction.notify(notice), prompt: prompt => interaction.prompt(prompt) },

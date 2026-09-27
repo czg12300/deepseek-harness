@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-multica/README.md
-README.md: 2d7969e64fd42fc681655dc706e02c12f931d098
-README.zh.md: 93ebb1602a18541285ad58df4f53e67978c57de5
+README.md: 30f07127d1673e3f788e59a4d69575bd7548fa7c
+README.zh.md: a95f45b58a05407164f8a39888bcd7937ebeb438

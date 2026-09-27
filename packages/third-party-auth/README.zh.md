@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-本组将可选账号功能集中在一个目录。Host 包管理连接状态及原生 Claude 会话，UI 包增加设置页和独立原生窗口，bundle 负责组合。现有模型适配器和普通 Agent 循环保持独立。
+本组包含默认 Web Profile 加载的账号功能。Host 包管理连接状态及原生 Claude 会话，UI 包增加设置页和独立原生窗口，bundle 负责组合。现有模型适配器和普通 Agent 循环保持独立。
 
 ## 目录
 
@@ -20,7 +20,7 @@ kind: "package-group"
 <a id="packages"></a>
 ## 包列表
 
-通过 bundle 加载完整功能，其余包分别拥有对应行为。
+默认 Web Profile 直接加载完整功能。自定义 Profile 可使用 bundle，其余包分别拥有对应行为。
 
 | Package | Role |
 |---|---|

@@ -29,6 +29,7 @@ import {
   type SessionPersistenceListOptions, type SessionPersistenceOpenOptions,
   type SessionPersistenceSnapshot, type SessionPersistenceStatOptions,
   type SessionPersistenceRevision as PersistenceRevision,
+  type SessionPersistenceStore,
 } from '@deepseek-ai/dsh-session-persistence'
 import { JsonlBackendTracker, JsonlSessionHandle, type StorageHandleState } from './storage.ts'
 import { SessionWriteLease } from './lease.ts'
@@ -233,6 +234,20 @@ function waitWithAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promise<
  * flush, and never existed if the process crashes before that.
  */
 class JsonlSessionPersistence extends SessionPersistence {
+  private readonly projectStores = new Set<SessionPersistenceStore>()
+
+  override registerStore(store: SessionPersistenceStore): () => Promise<void> {
+    return this.ctx.effect(() => {
+      this.projectStores.add(store)
+      return () => { this.projectStores.delete(store) }
+    })
+  }
+
+  private projectStore(id: SessionId): SessionPersistenceStore['backend'] | undefined {
+    const owners = [...this.projectStores].filter(store => store.owns(id))
+    if (owners.length > 1) throw new Error(`Session ${id} belongs to multiple open projects`)
+    return owners[0]?.backend
+  }
   static Config: z<Config> = z.object({
     root: z.string().required(),
     compression: JsonlCompressionSchema,
@@ -306,6 +321,8 @@ class JsonlSessionPersistence extends SessionPersistence {
    * @returns the owned write handle.
    */
   async create(header: SessionHeader, options?: SessionPersistenceCreateOptions): Promise<SessionHandle> {
+    const project = this.projectStore(header.id)
+    if (project) return project.create(header, options)
     options?.signal?.throwIfAborted()
     const snapshot = materializeCreateHeader(header)
     // Fail fast on a seeded/cut mismatch with the exact refusal the header
@@ -334,6 +351,8 @@ class JsonlSessionPersistence extends SessionPersistence {
    * @returns the open handle.
    */
   async open(id: SessionId, access: SessionAccess, options?: SessionPersistenceOpenOptions): Promise<SessionHandle> {
+    const project = this.projectStore(id)
+    if (project) return project.open(id, access, options)
     options?.signal?.throwIfAborted()
     await this.ensureRootEncoding()
     options?.signal?.throwIfAborted()
@@ -411,8 +430,11 @@ class JsonlSessionPersistence extends SessionPersistence {
    * contract.
    * @returns resolution once every write handle active at the call has flushed.
    */
-  flush(): Promise<void> {
-    return this.tracker.flushAll()
+  async flush(): Promise<void> {
+    const results = await Promise.allSettled([this.tracker.flushAll(), ...[...this.projectStores].map(store => store.backend.flush())])
+    const failures: unknown[] = results.filter(result => result.status === 'rejected')
+      .flatMap(result => result.reason instanceof AggregateError ? result.reason.errors as unknown[] : [result.reason as unknown])
+    if (failures.length) throw new AggregateError(failures, 'Session persistence flush failed')
   }
 
   /**
@@ -426,6 +448,8 @@ class JsonlSessionPersistence extends SessionPersistence {
     id: SessionId,
     options?: SessionPersistenceStatOptions,
   ): Promise<SessionPersistenceSnapshot | undefined> {
+    const project = this.projectStore(id)
+    if (project) return project.stat(id, options)
     options?.signal?.throwIfAborted()
     await this.ensureRootEncoding()
     options?.signal?.throwIfAborted()
@@ -486,7 +510,8 @@ class JsonlSessionPersistence extends SessionPersistence {
       if (!listed.has(id)) snapshots.push({ header: entry.header, revision: entry.revision })
     }
     signal?.throwIfAborted()
-    return snapshots
+    const projects = await Promise.all([...this.projectStores].map(store => store.backend.list(options)))
+    return [...snapshots.filter(snapshot => !this.projectStore(snapshot.header.id)), ...projects.flat()]
   }
 
   // --- handle-facing storage internals (package-private via the handle class below) ---

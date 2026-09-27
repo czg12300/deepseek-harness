@@ -8,6 +8,8 @@
 
 认证、集成启用和模型目录可用性是独立事实。私有授权流包含尝试能力标识及提示 ID，回复需要同时提供两者。设置仅持久化非秘密偏好。GPT 授权保留在 pi-ai 记录中，未修改的 Claude CLI 管理自己的配置目录。
 
+私有 `settled` 事件可携带不含秘密的 `reason`：`authorization`、`activation` 或 `timeout`。凭证保存和账号启用均完成后才报告 `connected`。ChatGPT 连接可从已保存的授权凭证恢复启用流程；用户主动取消仍报告 `cancelled`。
+
 ## Native conversations
 
 原生会话 ID 属于可选插件，不属于默认 Harness Agent 工厂。SQLite 数据域镜像原生 SDK 会话记录，并保留子任务流以供官方恢复。显示文本是该镜像的投影，不是已发布 Harness Session 格式的转换。关闭原生流会取消当前轮次，并等待受管进程清理。

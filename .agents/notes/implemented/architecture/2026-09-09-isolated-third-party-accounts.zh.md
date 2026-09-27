@@ -12,6 +12,8 @@ Status: implemented
 
 将 Host 实现、UI 和可选 bundle 放进[同一模块组](../../../../packages/third-party-auth/README.zh.md)，通过已有插槽注册设置页和独立原生窗口。依赖单向指向公开服务，原模块不反向导入新功能。GPT 复用已有授权流程和凭证，Claude 使用官方 CLI/SDK，以及集成专属配置目录和 SQLite 会话镜像。
 
+[默认 Web 插件决策](2026-09-15-default-web-account-and-comics-plugins.zh.md)负责默认加载。本记录继续负责 Provider 隔离和原生会话。
+
 [凭证记录决策](2026-08-13-credential-records-and-authorization-flows.zh.md)继续负责授权存储语义。[一次性产品 Provider 决策](../feature/2026-08-04-claude-code-and-codex-subagent-backends.zh.md)继续负责已有子任务，其文件和语义不被替换。新的账号消费者不取代这两份记录。
 
 ## Alternatives considered
@@ -22,4 +24,4 @@ Status: implemented
 
 ## Consequences
 
-设置和 API Key 行为保持独立。原生会话保留独立历史并要求明确工作目录，不冒充普通 Harness Session。与 rebase 相关的共享改动限制在工作区/编译清单及必要文档和生成索引。私有提示能力、路由归属、取消及原生镜像完整性有针对性测试。真实订阅授权与推理仍是明确的验证缺口。
+设置和 API Key 行为保持独立。原生会话保留独立历史并要求明确工作目录，不冒充普通 Harness Session。Web bundle 将账号包声明为运行依赖；厂商专属行为仍位于设置壳和普通 Agent 工厂之外。私有提示能力、路由归属、取消及原生镜像完整性有针对性测试。真实订阅授权与推理仍是明确的验证缺口。

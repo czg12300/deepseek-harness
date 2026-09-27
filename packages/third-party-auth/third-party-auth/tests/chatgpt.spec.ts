@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import AuthorizationService from '@deepseek-ai/dsh-authorization'
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import { MemoryCredentials } from '../../../credentials/credentials/tests/memory.ts'
 import { ThirdPartyAuth } from '../src/service.ts'
@@ -29,6 +29,16 @@ async function setup(providers: Record<string, object> = {}) {
 }
 
 describe('ChatGPT route ownership', () => {
+  it('finishes activation from a saved grant without repeating browser authorization', async () => {
+    const { ctx, provider } = await setup()
+    await ctx.credentials.modifyRecord(key, async () => ({ kind: 'grant', payload: { test: true } }))
+    const login = vi.spyOn(ctx.authorization, 'begin')
+    const signal = new AbortController().signal
+    expect(await provider.connect({ signal, notify: () => {}, prompt: async () => '' })).toBe(true)
+    await provider.activate(signal)
+    expect(login).not.toHaveBeenCalled()
+    expect(await provider.status(signal)).toEqual({ connected: true })
+  })
   it('uses the existing authorization service and activates a new route', async () => {
     const { ctx, provider } = await setup()
     const signal = new AbortController().signal

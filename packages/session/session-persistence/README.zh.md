@@ -29,6 +29,8 @@ kind: "package-reference"
 
 ### 选择后端
 
+`registerStore({ owns, backend })` 可在部署提供方后挂载项目自有的持久化存储。不支持的提供方拒绝注册。项目所有者在创建 Session 前注册，在句柄关闭前保持路由，并提供随 disposer 释放的身份判定函数。路由不改变句柄约定，也不允许改写 Session 历史。
+
 seam 随产品交付 [JSONL](../session-persistence-jsonl/README.zh.md) 后端。它为每个会话存储一份仅追加的 `.jsonl.zstd` 日志。第三方后端可以直接实现该服务；必须遵守的[后端约定](#understand-the-implementation)见下文。
 
 ### 服务提供什么

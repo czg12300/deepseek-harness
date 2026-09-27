@@ -17,10 +17,12 @@ Multica 的设计目标是帮助创作者管理从构想、全剧规划、单集
 | --- | --- |
 | [文本创作工作台](text-authoring.md) | 专业对话、字段提案、角色配置、人工审查及恢复限制 |
 | [项目基础版](project-foundation.md) | “漫剧”入口、手工项目管理、保存与版本规则、数据位置及当前限制 |
+| [演员库](actor-library.md) | 独立目录、演员参考图、ZIP 导入导出与冲突合并 |
 | [开发计划与资源预估](development-plan.md) | 阶段排期、Token 预算、持续交付节奏与启动条件 |
 | [功能设计](feature-design.md) | 产品范围、导航层级、创作流程、人工审查和一致性机制 |
 | [专业 Agent 工作区](agent-workspaces.md) | 按页面绑定角色、对话提案、skills、MCP、工具权限和会话交接 |
 | [页面规格](page-specifications.md) | 各页面的入口、功能、操作、状态与对应设计图 |
+| [项目工作台布局设计](project-workspace-v2-design.md) | 剧本三栏、横向展开的制作画布和项目资产，以及媒体预览的五张待评审设计图 |
 | [工程方案](architecture-design.md) | 插件组合、项目数据、agent 权限和长期任务实现方向 |
 | [实施与验收](delivery-plan.md) | 试片范围、里程碑、验证标准和待决定事项 |
 | [设计图索引](design-catalog.md) | 当前页面效果图、生成信息与完整提示词入口 |

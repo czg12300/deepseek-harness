@@ -25,6 +25,8 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
+The provider supports `registerStore()` for independently owned project Sessions. Registered identities route create, open and metadata reads to that store; list and flush include mounted stores. The owner drains handles before disposing the registration. Ordinary identities retain this package's JSONL encoding and immutable-generation rules.
+
 Mount this backend when a composition needs durable sessions backed by per-session files. The common path is explicit: load the session service, mount the backend, and give it a root directory.
 
 ### When to choose it

@@ -1,6 +1,10 @@
 /** Account-page dictionaries; native provider notices retain their original language. */
 export const zh = {
   nav: '三方授权', intro: '连接你的账号，选择在 Harness 中使用的模型。',
+  resumeConnection: '完成账号连接',
+  authorizationFailed: '未能完成授权或保存凭证。请检查服务端代理连接，然后重新登录；浏览器成功页不代表凭证已保存。',
+  activationFailed: '授权已完成，但启用账号失败。请重试完成账号连接。',
+  loginTimedOut: '登录等待超时，请重新发起登录，并使用本次生成的授权链接。',
   chatgpt: 'ChatGPT', claude: 'Claude',
   chatgptDetail: '通过 ChatGPT 账号授权', claudeDetail: '通过 Claude Code 连接',
   connected: '已连接', disconnected: '未连接', connecting: '连接中', account: '账号已连接',
@@ -27,6 +31,10 @@ export type AccountKey = keyof typeof zh
 /** English translation of every account-page label. */
 export const en = {
   nav: 'Third-party authorization', intro: 'Connect your accounts and choose models to use in Harness.',
+  resumeConnection: 'Finish connecting account',
+  authorizationFailed: 'Authorization or credential storage failed. Check the server proxy connection and sign in again; the browser success page does not confirm that credentials were saved.',
+  activationFailed: 'Authorization completed, but account activation failed. Retry to finish connecting the account.',
+  loginTimedOut: 'Sign-in timed out. Start again and use the newly generated authorization link.',
   chatgpt: 'ChatGPT', claude: 'Claude', chatgptDetail: 'Authorize with your ChatGPT account', claudeDetail: 'Connect through Claude Code',
   connected: 'Connected', disconnected: 'Not connected', connecting: 'Connecting', account: 'Account connected',
   loginChatgpt: 'Sign in with ChatGPT', loginClaude: 'Connect Claude Code', disconnect: 'Disconnect',

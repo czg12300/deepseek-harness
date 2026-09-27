@@ -1754,6 +1754,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Durable append-only session storage addressed through per-session handles.\n\nStorage semantics shared by every backend: events are contiguous from seq 0 and never rewritten; a torn physical tail is never returned to a reader and is truncated by the write path before its first append; reads validate current-format records only and refuse unknown vocabulary fail-closed. `append` persists best-effort; `flush` — per handle or service-wide — is the durability barrier.\n\nVisibility: a created session is observable through `stat`/`list`/`open` in this process from the moment `create` resolves, even while a backend defers physical materialization (a pure optimization); other processes see the session only once it materializes, and a session that never materialized before a crash never existed. `SessionHandle.flush` forces materialization.\n\nFreshness: once an `append` or `flush` resolves, reads started afterwards on this backend instance observe at least that prefix.',
     methods: [
       {
+        signature: 'registerStore(store: SessionPersistenceStore): () => Promise<void>',
+        description: 'Route explicitly owned sessions to a mounted project store. Backends without routing support reject; callers must keep the registration until handles close.',
+        parameters: [{ name: 'store', description: 'project-owned persistence and identity predicate.' }],
+        returns: 'disposer removing the route after its owner has drained sessions.',
+      },
+      {
         signature: 'abstract create(header: SessionHeader, options?: SessionPersistenceCreateOptions): Promise<SessionHandle>',
         description: 'Create a new stored session and take its write ownership.',
         parameters: [{ name: 'header', description: 'the immutable header (id, version, cwd, lineage) to store.' }, { name: 'options', description: 'optional cancellation.' }],
@@ -2441,9 +2447,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'dependency choices without invoking a model.',
       },
       {
-        signature: 'async resolve(role: StudioRoleRevision): Promise<StudioResolvedRole>',
-        description: 'Resolve model and dependency content once, before its workspace begins execution.',
-        parameters: [{ name: 'role', description: 'immutable, validated role configuration.' }],
+        signature: 'async resolve(role: StudioRoleRevision, selection?: Pick<StudioResolvedRole, \'provider\' | \'model\' | \'reasoningEffort\'>): Promise<StudioResolvedRole>',
+        description: 'Resolve a task model and selected dependency content before admission.',
+        parameters: [{ name: 'role', description: 'immutable, validated role configuration.' }, { name: 'selection', description: 'explicit task model selection, overriding the role default.' }],
         returns: 'the effective model and selected skill bodies/tool identities.',
       },
       {
@@ -2458,13 +2464,209 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'host-owned task identity.' }],
         returns: 'after all task-local tools and pending model work have stopped.',
       },
+      {
+        signature: 'async closeProject(root: string): Promise<void>',
+        description: 'Release the project runtime after its tasks settle.',
+        parameters: [{ name: 'root', description: 'current project directory.' }],
+      },
+      {
+        signature: 'openProject(root: string, check: () => void): void',
+        description: 'Mount project history without a model request.',
+        parameters: [{ name: 'root', description: 'opened directory.' }, { name: 'check', description: 'disk identity check.' }],
+      },
+      {
+        signature: 'async copySessions(ids: SessionId[], root: string, check: () => void): Promise<void>',
+        description: 'Copy legacy dialogue before installing its project route.',
+        parameters: [{ name: 'ids', description: 'initialized identities.' }, { name: 'root', description: 'destination folder.' }, { name: 'check', description: 'disk identity check.' }],
+      },
     ],
   },
   {
     key: 'studioProjects',
-    summary: 'Revisioned projects and permanent episode identities exposed as studioProjects Remote methods.',
-    description: 'Revisioned projects and permanent episode identities exposed as studioProjects Remote methods.',
+    summary: 'Project operations routed by stable identities to independently portable folders.',
+    description: 'Project operations routed by stable identities to independently portable folders.',
     methods: [
+      {
+        signature: '@Remote(\'actorLibraries\') actorLibraries(): ActorLibrarySummary[]',
+        description: 'List independent actor-library folders.',
+        parameters: [],
+        returns: 'local libraries and actor counts.',
+      },
+      {
+        signature: '@Remote(\'createActorLibrary\') createActorLibrary(name: string): ActorLibrarySummary',
+        description: 'Create a portable actor library under the device\'s actor directory.',
+        parameters: [{ name: 'name', description: 'library name.' }],
+        returns: 'new library summary.',
+      },
+      {
+        signature: '@Remote(\'libraryActors\') libraryActors(id: ActorLibraryId, search: string, period: string, region: string, offset: number): ActorPage',
+        description: 'Search actors in one independent library.',
+        parameters: [{ name: 'id', description: 'library identity.' }, { name: 'search', description: 'name fragment.' }, { name: 'period', description: 'exact period filter.' }, { name: 'region', description: 'exact region filter.' }, { name: 'offset', description: 'result offset for paging.' }],
+        returns: 'first page and full matching count.',
+      },
+      {
+        signature: '@Remote(\'libraryActor\') libraryActor(libraryId: ActorLibraryId, actorId: ActorId): Actor | null',
+        description: 'Read one actor and its two reference images.',
+        parameters: [{ name: 'libraryId', description: 'library identity.' }, { name: 'actorId', description: 'actor identity.' }],
+        returns: 'actor or null.',
+      },
+      {
+        signature: '@Remote(\'saveLibraryActor\') saveLibraryActor(libraryId: ActorLibraryId, actorId: ActorId | null, input: ActorInput): Actor',
+        description: 'Save user-authored actor details without model work.',
+        parameters: [{ name: 'libraryId', description: 'destination library.' }, { name: 'actorId', description: 'actor to replace, or null for a new actor.' }, { name: 'input', description: 'complete details and reference images.' }],
+        returns: 'committed actor.',
+      },
+      {
+        signature: '@Remote(\'exportActorLibrary\') exportActorLibrary(id: ActorLibraryId): { name: string; dataUrl: string }',
+        description: 'Export a complete portable library archive.',
+        parameters: [{ name: 'id', description: 'source library.' }],
+        returns: 'ZIP data URL and suggested filename.',
+      },
+      {
+        signature: '@Remote(\'importActorLibrary\') importActorLibrary(dataUrl: string, target: ActorLibraryId | null): ActorImportResult',
+        description: 'Install or merge a validated actor-library archive.',
+        parameters: [{ name: 'dataUrl', description: 'ZIP data URL.' }, { name: 'target', description: 'destination library, or null to install separately.' }],
+        returns: 'destination and merge counts.',
+      },
+      {
+        signature: '@Remote(\'scriptDocuments\') scriptDocuments(id: ProjectId): ScriptDocument[]',
+        description: 'List project-local Markdown files, materializing committed scripts on disk.',
+        parameters: [{ name: 'id', description: 'mounted project.' }],
+        returns: 'ordered script documents.',
+      },
+      {
+        signature: '@Remote(\'scriptDocument\') scriptDocument(projectId: ProjectId, documentId: ScriptDocumentId): ScriptDocument | null',
+        description: 'Read a project Markdown document.',
+        parameters: [{ name: 'projectId', description: 'mounted project.' }, { name: 'documentId', description: 'document identity.' }],
+        returns: 'document or null.',
+      },
+      {
+        signature: '@Remote(\'saveScriptDocument\') saveScriptDocument(projectId: ProjectId, documentId: ScriptDocumentId, expectedRevision: number, markdown: string): ScriptDocument',
+        description: 'Save Markdown, preserving project revision checks for outline and episode scripts.',
+        parameters: [{ name: 'projectId', description: 'mounted project.' }, { name: 'documentId', description: 'document identity.' }, { name: 'expectedRevision', description: 'observed document revision.' }, { name: 'markdown', description: 'replacement text.' }],
+        returns: 'committed document.',
+      },
+      {
+        signature: '@Remote(\'scriptComplete\') scriptComplete(id: ProjectId): boolean',
+        description: 'Read the user\'s completion decision against the current script digest.',
+        parameters: [{ name: 'id', description: 'mounted project.' }],
+        returns: 'whether the script remains complete.',
+      },
+      {
+        signature: '@Remote(\'completeScript\') completeScript(id: ProjectId, expectedRevision: number): boolean',
+        description: 'Confirm a complete saved script before admitting production.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'expectedRevision', description: 'reviewed saved revision.' }],
+        returns: 'true after confirmation.',
+      },
+      {
+        signature: '@Remote(\'productionUnits\') productionUnits(id: ProjectId): ProductionUnit[]',
+        description: 'List episode and whole-film production units.',
+        parameters: [{ name: 'id', description: 'mounted project.' }],
+        returns: 'saved units.',
+      },
+      {
+        signature: '@Remote(\'createProductionUnit\') createProductionUnit(id: ProjectId, kind: ProductionUnit[\'kind\'], episodeId: EpisodeId | null, title: string): ProductionUnit',
+        description: 'Create an episode or whole-film canvas.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'kind', description: 'production template.' }, { name: 'episodeId', description: 'source episode for episode units.' }, { name: 'title', description: 'unit name.' }],
+        returns: 'created unit.',
+      },
+      {
+        signature: '@Remote(\'canvasNodes\') canvasNodes(id: ProjectId, unitId: ProductionUnitId): CanvasNode[]',
+        description: 'Read one production canvas.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'unitId', description: 'production unit.' }],
+        returns: 'persisted nodes.',
+      },
+      {
+        signature: '@Remote(\'addCanvasNode\') addCanvasNode(id: ProjectId, unitId: ProductionUnitId, kind: CanvasNode[\'kind\'], label: string, x: number, y: number, assetId: ProjectMediaId | null, text: string | null): CanvasNode',
+        description: 'Add a text or media-reference node.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'unitId', description: 'owning canvas.' }, { name: 'kind', description: 'node kind.' }, { name: 'label', description: 'node title.' }, { name: 'x', description: 'canvas x coordinate.' }, { name: 'y', description: 'canvas y coordinate.' }, { name: 'assetId', description: 'optional media identity.' }, { name: 'text', description: 'script-node text or null for media.' }],
+        returns: 'created node.',
+      },
+      {
+        signature: '@Remote(\'moveCanvasNode\') moveCanvasNode(id: ProjectId, unitId: ProductionUnitId, nodeId: CanvasNodeId, revision: number, x: number, y: number): CanvasNode',
+        description: 'Move one canvas node under an expected revision.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'unitId', description: 'owning canvas.' }, { name: 'nodeId', description: 'node identity.' }, { name: 'revision', description: 'observed revision.' }, { name: 'x', description: 'new x coordinate.' }, { name: 'y', description: 'new y coordinate.' }],
+        returns: 'updated node.',
+      },
+      {
+        signature: '@Remote(\'projectMedia\') projectMedia(id: ProjectId): ProjectMediaAsset[]',
+        description: 'List indexed image, video and audio artifacts.',
+        parameters: [{ name: 'id', description: 'mounted project.' }],
+        returns: 'media metadata.',
+      },
+      {
+        signature: '@Remote(\'importProjectMedia\') importProjectMedia(id: ProjectId, unitId: ProductionUnitId, name: string, dataUrl: string): ProjectMediaAsset',
+        description: 'Import bounded media into one production canvas.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'unitId', description: 'destination production unit.' }, { name: 'name', description: 'source filename.' }, { name: 'dataUrl', description: 'validated media bytes.' }],
+        returns: 'indexed media.',
+      },
+      {
+        signature: '@Remote(\'projectMediaData\') projectMediaData(id: ProjectId, assetId: ProjectMediaId): string | null',
+        description: 'Return bounded media bytes for an original-image or audio/video preview.',
+        parameters: [{ name: 'id', description: 'mounted project.' }, { name: 'assetId', description: 'indexed media identity.' }],
+        returns: 'data URL or null when unknown.',
+      },
+      {
+        signature: '@Remote(\'projectFolders\') projectFolders(): StudioFolder[]',
+        description: 'Read recent portable locations without opening or creating project files.',
+        parameters: [],
+        returns: 'recent folders and availability.',
+      },
+      {
+        signature: '@Remote(\'openFolder\') openFolder(path: string): StudioFolder',
+        description: 'Open a portable project or creation form.',
+        parameters: [{ name: 'path', description: 'absolute project directory.' }],
+        returns: 'its current location.',
+      },
+      {
+        signature: '@Remote(\'prepareFolder\') async prepareFolder(path: string, id: StudioCreationId, input: ProjectInput): Promise<StudioFolder>',
+        description: 'Establish a portable creation form before any assistant task.',
+        parameters: [{ name: 'path', description: 'empty absolute directory.' }, { name: 'id', description: 'form identity.' }, { name: 'input', description: 'initial form.' }],
+        returns: 'its saved location.',
+      },
+      {
+        signature: '@Remote(\'closeFolder\') async closeFolder(id: StudioFolderId): Promise<void>',
+        description: 'Drain professional work, flush its history, then release all project files.',
+        parameters: [{ name: 'id', description: 'open folder identity.' }],
+      },
+      {
+        signature: '@Remote(\'forgetFolder\') forgetFolder(id: StudioFolderId): void',
+        description: 'Hide a catalog entry without accessing project files or changing its mounted runtime.',
+        parameters: [{ name: 'id', description: 'recent location identity.' }],
+      },
+      {
+        signature: '@Remote(\'revealFolder\') async revealFolder(id: StudioFolderId, signal: AbortSignal): Promise<void>',
+        description: 'Reveal the currently opened directory on the application host.',
+        parameters: [{ name: 'id', description: 'mounted folder.' }, { name: 'signal', description: 'caller cancellation.' }],
+      },
+      {
+        signature: '@Remote(\'migrateProject\') async migrateProject(id: ProjectId, path: string): Promise<StudioFolder>',
+        description: 'Copy a legacy project and its dialogue into an empty portable directory; the source remains intact.',
+        parameters: [{ name: 'id', description: 'legacy project identity.' }, { name: 'path', description: 'empty destination directory.' }],
+        returns: 'the opened portable location after all histories have been copied.',
+      },
+      {
+        signature: '@Remote(\'backupFolder\') async backupFolder(id: StudioFolderId, destination: string): Promise<void>',
+        description: 'Save a complete copy and close the source for transfer.',
+        parameters: [{ name: 'id', description: 'source folder.' }, { name: 'destination', description: 'empty absolute destination.' }],
+      },
+      {
+        signature: '@Remote(\'saveEditorDraft\') saveEditorDraft(id: ProjectId, baseRevision: number, input: ProjectInput): void',
+        description: 'Persist a recoverable editor buffer without creating a formal content revision.',
+        parameters: [{ name: 'id', description: 'project identity.' }, { name: 'baseRevision', description: 'version edited.' }, { name: 'input', description: 'complete buffer.' }],
+      },
+      {
+        signature: '@Remote(\'editorDraft\') editorDraft(id: ProjectId): { baseRevision: number; input: ProjectInput } | null',
+        description: 'Read a recoverable buffer; its base revision may require conflict resolution.',
+        parameters: [{ name: 'id', description: 'project identity.' }],
+        returns: 'saved buffer or null.',
+      },
+      {
+        signature: 'sessionProject(id: SessionId): { root: string; check: () => void } | undefined',
+        description: 'Resolve a professional Session\'s currently mounted directory.',
+        parameters: [{ name: 'id', description: 'reserved Session identity.' }],
+        returns: 'current root and disk check, or undefined for legacy sessions.',
+      },
       {
         signature: '@Remote(\'list\') list(): ProjectSummary[]',
         description: 'List current projects, including archived ones, sorted by update time then stable identity.',
@@ -2550,15 +2752,15 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'target-owned field identities.',
       },
       {
-        signature: '@Remote(\'roles\') roles(): StudioRoleRevision[]',
+        signature: '@Remote(\'roles\') roles(folderId?: StudioFolderId): StudioRoleRevision[]',
         description: 'List the published professional-role configurations.',
-        parameters: [],
+        parameters: [{ name: 'folderId', description: 'open project identity, or omit for device templates.' }],
         returns: 'one current version for each role.',
       },
       {
-        signature: '@Remote(\'publishRole\') async publishRole(role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig): Promise<StudioRoleRevision>',
+        signature: '@Remote(\'publishRole\') async publishRole( role: StudioRoleId, expectedRevision: number, config: StudioRoleConfig, folderId?: StudioFolderId, ): Promise<StudioRoleRevision>',
         description: 'Publish a human-edited role configuration; existing workspaces retain their versions.',
-        parameters: [{ name: 'role', description: 'role identity.' }, { name: 'expectedRevision', description: 'version edited by the user.' }, { name: 'config', description: 'complete professional configuration.' }],
+        parameters: [{ name: 'role', description: 'role identity.' }, { name: 'expectedRevision', description: 'version edited by the user.' }, { name: 'config', description: 'complete professional configuration.' }, { name: 'folderId', description: 'open project identity, or omit for device templates.' }],
         returns: 'the new immutable role revision.',
       },
       {
@@ -4167,6 +4369,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AccountView extends AccountStatus {\n    id: ProviderId;\n    enabled: boolean;\n    connecting: boolean;\n    model?: string;\n    models: AccountModel[];\n    catalogFailed: boolean;\n}',
   },
   {
+    name: 'Actor',
+    declaration: 'export interface Actor extends ActorInput {\n    id: ActorId;\n    createdAt: string;\n    updatedAt: string;\n}',
+  },
+  {
+    name: 'ActorId',
+    declaration: 'export type ActorId = Branded<\'ActorId\'>;',
+  },
+  {
+    name: 'ActorImportResult',
+    declaration: 'export interface ActorImportResult {\n    library: ActorLibrarySummary;\n    added: number;\n    skipped: number;\n    conflicts: number;\n}',
+  },
+  {
+    name: 'ActorInput',
+    declaration: 'export interface ActorInput {\n    name: string;\n    description: string;\n    period: string;\n    region: string;\n    portrait: string | null;\n    fullBody: string | null;\n}',
+  },
+  {
+    name: 'ActorLibraryId',
+    declaration: 'export type ActorLibraryId = Branded<\'ActorLibraryId\'>;',
+  },
+  {
+    name: 'ActorLibrarySummary',
+    declaration: 'export interface ActorLibrarySummary {\n    id: ActorLibraryId;\n    name: string;\n    path: string;\n    actorCount: number;\n}',
+  },
+  {
+    name: 'ActorPage',
+    declaration: 'export interface ActorPage {\n    actors: Actor[];\n    total: number;\n}',
+  },
+  {
     name: 'AdapterRegistrationHandle',
     declaration: 'export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}',
   },
@@ -4415,6 +4645,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type BrandedNumber<B extends string> = number & {\n    readonly [BRAND]: B;\n};',
   },
   {
+    name: 'CanvasNode',
+    declaration: 'export interface CanvasNode {\n    id: CanvasNodeId;\n    unitId: ProductionUnitId;\n    kind: \'script\' | \'image\' | \'video\' | \'audio\';\n    label: string;\n    text: string | null;\n    x: number;\n    y: number;\n    assetId: ProjectMediaId | null;\n    revision: number;\n}',
+  },
+  {
+    name: 'CanvasNodeId',
+    declaration: 'export type CanvasNodeId = Branded<\'CanvasNodeId\'>;',
+  },
+  {
     name: 'ClaudeMessage',
     declaration: 'export interface ClaudeMessage {\n    role: \'user\' | \'assistant\';\n    text: string;\n}',
   },
@@ -4536,7 +4774,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ConnectEvent',
-    declaration: 'export type ConnectEvent = {\n    kind: \'started\';\n    attemptId: AttemptId;\n} | {\n    kind: \'notice\';\n    notice: AuthorizationNotice;\n} | {\n    kind: \'prompt\';\n    id: PromptId;\n    prompt: AccountPrompt;\n} | {\n    kind: \'withdrawn\';\n    id: PromptId;\n} | {\n    kind: \'settled\';\n    status: \'connected\' | \'cancelled\' | \'failed\';\n};',
+    declaration: 'export type ConnectEvent = {\n    kind: \'started\';\n    attemptId: AttemptId;\n} | {\n    kind: \'notice\';\n    notice: AuthorizationNotice;\n} | {\n    kind: \'prompt\';\n    id: PromptId;\n    prompt: AccountPrompt;\n} | {\n    kind: \'withdrawn\';\n    id: PromptId;\n} | {\n    kind: \'settled\';\n    status: \'connected\' | \'cancelled\' | \'failed\';\n    reason?: \'authorization\' | \'activation\' | \'timeout\';\n};',
   },
   {
     name: 'ConnectInteraction',
@@ -5527,6 +5765,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n};',
   },
   {
+    name: 'ProductionUnit',
+    declaration: 'export interface ProductionUnit {\n    id: ProductionUnitId;\n    projectId: ProjectId;\n    kind: \'episode\' | \'whole\';\n    episodeId: EpisodeId | null;\n    title: string;\n    createdAt: string;\n}',
+  },
+  {
+    name: 'ProductionUnitId',
+    declaration: 'export type ProductionUnitId = Branded<\'ProductionUnitId\'>;',
+  },
+  {
     name: 'Project',
     declaration: 'export interface Project extends ProjectInput {\n    id: ProjectId;\n    revision: number;\n    createdAt: string;\n    updatedAt: string;\n    archived: boolean;\n}',
   },
@@ -5561,6 +5807,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ProjectionSnapshot',
     declaration: 'export interface ProjectionSnapshot {\n    asOfSeq: SessionSeqCursor;\n    values: Partial<SessionProjectionMap>;\n}',
+  },
+  {
+    name: 'ProjectMediaAsset',
+    declaration: 'export interface ProjectMediaAsset {\n    id: ProjectMediaId;\n    projectId: ProjectId;\n    unitId: ProductionUnitId;\n    kind: \'image\' | \'video\' | \'audio\';\n    name: string;\n    mime: string;\n    byteSize: number;\n    createdAt: string;\n}',
+  },
+  {
+    name: 'ProjectMediaId',
+    declaration: 'export type ProjectMediaId = Branded<\'ProjectMediaId\'>;',
   },
   {
     name: 'ProjectSummary',
@@ -5765,6 +6019,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ScopeKey',
     declaration: 'export type ScopeKey = object;',
+  },
+  {
+    name: 'ScriptDocument',
+    declaration: 'export interface ScriptDocument {\n    id: ScriptDocumentId;\n    projectId: ProjectId;\n    kind: \'outline\' | \'characters\' | \'episode\';\n    episodeId: EpisodeId | null;\n    title: string;\n    relativePath: string;\n    markdown: string;\n    revision: number;\n}',
+  },
+  {
+    name: 'ScriptDocumentId',
+    declaration: 'export type ScriptDocumentId = Branded<\'ScriptDocumentId\'>;',
   },
   {
     name: 'SearchFileMatches',
@@ -6047,6 +6309,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SessionPageRequest {\n    readonly address: SessionAddress;\n    readonly throughSeq: number;\n    readonly beforeSeq?: number;\n    readonly maxMessages?: number;\n}',
   },
   {
+    name: 'SessionPersistence',
+    declaration: 'export abstract class SessionPersistence extends Service {\n    constructor(ctx: Context);\n    registerStore(store: SessionPersistenceStore): () => Promise<void>;\n    abstract create(header: SessionHeader, options?: SessionPersistenceCreateOptions): Promise<SessionHandle>;\n    abstract open(id: SessionId, access: SessionAccess, options?: SessionPersistenceOpenOptions): Promise<SessionHandle>;\n    abstract flush(): Promise<void>;\n    abstract stat(id: SessionId, options?: SessionPersistenceStatOptions): Promise<SessionPersistenceSnapshot | undefined>;\n    abstract list(options?: SessionPersistenceListOptions): Promise<readonly SessionPersistenceSnapshot[]>;\n}',
+  },
+  {
     name: 'SessionPersistenceCreateOptions',
     declaration: 'export interface SessionPersistenceCreateOptions {\n    readonly signal?: AbortSignal;\n    readonly inheritedEventCount?: SessionLogOffset;\n}',
   },
@@ -6069,6 +6335,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionPersistenceStatOptions',
     declaration: 'export interface SessionPersistenceStatOptions {\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'SessionPersistenceStore',
+    declaration: 'export interface SessionPersistenceStore {\n    owns(id: SessionId): boolean;\n    backend: Pick<SessionPersistence, \'create\' | \'open\' | \'stat\' | \'list\' | \'flush\'>;\n}',
   },
   {
     name: 'SessionProjectionBaseline',
@@ -6476,11 +6746,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StudioAssistantBackend',
-    declaration: 'export interface StudioAssistantBackend {\n    catalog(this: void): Promise<StudioAssistantCatalog>;\n    resolve(this: void, role: StudioRoleRevision): Promise<StudioResolvedRole>;\n    execute(this: void, task: StudioTask): Promise<StudioAssistantResult>;\n    cancel(this: void, taskId: StudioTaskId): Promise<void>;\n}',
+    declaration: 'export interface StudioAssistantBackend {\n    openProject?(this: void, root: string, check: () => void): void;\n    copySessions?(this: void, ids: SessionId[], root: string, check: () => void): Promise<void>;\n    closeProject?(this: void, root: string): Promise<void>;\n    catalog(this: void): Promise<StudioAssistantCatalog>;\n    resolve(this: void, role: StudioRoleRevision, selection?: StudioModelSelection): Promise<StudioResolvedRole>;\n    execute(this: void, task: StudioTask): Promise<StudioAssistantResult>;\n    cancel(this: void, taskId: StudioTaskId): Promise<void>;\n}',
   },
   {
     name: 'StudioAssistantCatalog',
-    declaration: 'export interface StudioAssistantCatalog {\n    backendAvailable: boolean;\n    enabledRoles: StudioRoleId[];\n    defaultModel: {\n        provider: string;\n        model: string;\n    } | null;\n    skills: Array<{\n        name: string;\n        description: string;\n    }>;\n    tools: Array<{\n        name: string;\n        description: string;\n        source: \'builtin\' | \'mcp\';\n    }>;\n}',
+    declaration: 'export interface StudioAssistantCatalog {\n    backendAvailable: boolean;\n    enabledRoles: StudioRoleId[];\n    defaultModel: StudioModelSelection | null;\n    skills: Array<{\n        name: string;\n        description: string;\n    }>;\n    tools: Array<{\n        name: string;\n        description: string;\n        source: \'builtin\' | \'mcp\';\n    }>;\n}',
   },
   {
     name: 'StudioAssistantResult',
@@ -6515,6 +6785,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type StudioFieldValue = string | number | null | ProjectInput[\'episodes\'];',
   },
   {
+    name: 'StudioFolder',
+    declaration: 'export interface StudioFolder {\n    id: StudioFolderId;\n    path: string;\n    projectId: ProjectId | null;\n    creationId: import(\'./workflow-types.ts\').StudioCreationId | null;\n    name: string;\n    state: \'open\' | \'closed\' | \'missing\';\n    summary?: ProjectSummary;\n}',
+  },
+  {
+    name: 'StudioFolderId',
+    declaration: 'export type StudioFolderId = Branded<\'StudioFolderId\'>;',
+  },
+  {
+    name: 'StudioModelSelection',
+    declaration: 'export interface StudioModelSelection {\n    provider: string;\n    model: string;\n    reasoningEffort?: string | undefined;\n}',
+  },
+  {
     name: 'StudioProposal',
     declaration: 'export interface StudioProposal {\n    id: StudioProposalId;\n    taskId: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    target: StudioTarget;\n    expectedRevision: number | null;\n    changes: Array<{\n        field: StudioField;\n        before: StudioFieldValue;\n        after: StudioFieldValue;\n    }>;\n    applied: StudioField[];\n    ignored: StudioField[];\n    createdAt: string;\n}',
   },
@@ -6528,7 +6810,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StudioResolvedRole',
-    declaration: 'export interface StudioResolvedRole {\n    provider: string;\n    model: string;\n    skills: Array<{\n        name: string;\n        content: string;\n    }>;\n    tools: string[];\n}',
+    declaration: 'export interface StudioResolvedRole extends StudioModelSelection {\n    skills: Array<{\n        name: string;\n        content: string;\n    }>;\n    tools: string[];\n}',
   },
   {
     name: 'StudioReview',
@@ -6556,7 +6838,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StudioTask',
-    declaration: 'export interface StudioTask {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    role: StudioRoleRevision;\n    resolved: StudioResolvedRole;\n    sessionId: SessionId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n    reviews: StudioReview[];\n    status: \'running\' | \'completed\' | \'failed\' | \'cancelled\' | \'interrupted\';\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
+    declaration: 'export interface StudioTask {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    role: StudioRoleRevision;\n    resolved: StudioResolvedRole;\n    sessionId: SessionId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n    modelSelection?: StudioModelSelection | undefined;\n    reviews: StudioReview[];\n    status: \'running\' | \'completed\' | \'failed\' | \'cancelled\' | \'interrupted\';\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
   },
   {
     name: 'StudioTaskId',
@@ -6564,11 +6846,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StudioTaskRequest',
-    declaration: 'export interface StudioTaskRequest {\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n}',
+    declaration: 'export interface StudioTaskRequest {\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    expectedRevision: number | null;\n    input: ProjectInput;\n    prompt: string;\n    modelSelection?: StudioModelSelection | undefined;\n}',
   },
   {
     name: 'StudioTaskView',
-    declaration: 'export interface StudioTaskView {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    sessionId: SessionId;\n    role: StudioRoleId;\n    roleRevision: number;\n    provider: string;\n    model: string;\n    expectedRevision: number | null;\n    prompt: string;\n    status: StudioTask[\'status\'];\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
+    declaration: 'export interface StudioTaskView {\n    id: StudioTaskId;\n    workspaceId: StudioWorkspaceId;\n    requestId: StudioRequestId;\n    target: StudioTarget;\n    sessionId: SessionId;\n    role: StudioRoleId;\n    roleRevision: number;\n    provider: string;\n    model: string;\n    reasoningEffort?: string;\n    expectedRevision: number | null;\n    prompt: string;\n    status: StudioTask[\'status\'];\n    reply: string;\n    error: string | null;\n    createdAt: string;\n    finishedAt: string | null;\n}',
   },
   {
     name: 'StudioWorkspace',

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This group contains the optional account feature in one directory. Its Host package manages connection state and native Claude conversations, its UI package adds settings and a separate native window, and its bundle composes both. Existing model adapters and the ordinary Agent loop remain independent.
+This group contains the account feature included in the default Web profile. Its Host package manages connection state and native Claude conversations, its UI package adds settings and a separate native window, and its bundle composes both. Existing model adapters and the ordinary Agent loop remain independent.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ This group contains the optional account feature in one directory. Its Host pack
 <a id="packages"></a>
 ## Packages
 
-Choose the bundle to load the complete feature; the other packages own its behavior.
+The default Web profile loads the feature directly. Custom profiles can use the bundle; the other packages own its behavior.
 
 | Package | Role |
 |---|---|
