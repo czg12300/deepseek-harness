@@ -80,7 +80,7 @@ describe('summary blank = conversation not started', () => {
     expect(await listBlank(remote, session.id)).toBe(false)
   })
 
-  it('keeps project-only Sessions out of live notifications and attached or cold listings', async () => {
+  it('keeps project-only Sessions out of live notifications, listings, and ordinary history', async () => {
     const { ctx, remote } = await harness()
     const added = vi.fn<(summary: SessionSummary) => void>()
     ctx.on('api-session/added', added)
@@ -99,7 +99,10 @@ describe('summary blank = conversation not started', () => {
     const result = await remote.list({})
     if (!result.ok) throw new Error('list failed')
     expect(result.value.items.map(item => item.sessionId).sort()).toEqual(['cold-ordinary', ordinary.id])
-    const history = await remote.page({ address: { kind: 'session', sessionId: project.id } })
-    expect(history.ok).toBe(true)
+    const history = await remote.page({
+      address: { kind: 'session', sessionId: project.id },
+      throughSeq: project.seq - 1,
+    })
+    expect(history).toMatchObject({ ok: false, error: { code: 'session/not-found' } })
   })
 })

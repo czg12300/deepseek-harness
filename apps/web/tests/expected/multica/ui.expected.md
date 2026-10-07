@@ -48,6 +48,8 @@
       - strong: Create the story outline on the left
       - paragraph: Develop the plot, character arcs and ending from your project concept and current draft. Apply the generated outline directly to the editor.
     - group: Work history and settings
+    - button "Conversations"
+    - button "New conversation"
     - paragraph: Start an outline from the project concept, or describe the plot you want to change. I will provide a complete outline you can apply to the editor.
     - button "Draft story outline"
     - button "Develop current outline"

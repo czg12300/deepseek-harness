@@ -21,6 +21,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MockAdapter, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import StudioAgents from '../src/index.ts'
 import { ApiSessionList } from '../../../api/session-controller/src/list.ts'
+import { installSessionReadTestServices } from '../../../api/session-controller/tests/test-remote.ts'
 
 const contexts: Context[] = []
 const roots: string[] = []
@@ -60,6 +61,7 @@ async function setup(script: ConstructorParameters<typeof MockAdapter>[0], home?
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
   await mountAgentLoopTestDependencies(ctx)
+  installSessionReadTestServices(ctx)
   await ctx.plugin(JsonlSessionPersistence, { root: join(home, 'logs'), compression: 'none' })
   await ctx.plugin(AgentDefaultModel, { provider: 'mock', model: 'creative' })
   await ctx.plugin(SkillRegistry)
