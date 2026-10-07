@@ -144,6 +144,7 @@ export class SessionController extends TypertRemoteService {
     ctx.plugin(SessionSkillCatalog)
 
     ctx.on('session/created', (session) => {
+      if (session.header.cwd === undefined) return
       ctx.emit('api-session/added', this.listState.summaryFor(session))
     })
     ctx.on('session/disposed', (session) => {

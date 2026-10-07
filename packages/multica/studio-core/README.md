@@ -85,7 +85,7 @@ Invalid wire input, unknown projects on writes, incompatible databases, corrupt 
 
 ### Professional drafts and human review
 
-`saveCreationDraft()` persists an independent creation form, including a blank name. `createFromDraft()` validates the completed form and publishes its project exactly once. `openWorkspace()` binds a target to an immutable role version and reserved Session ID without creating an Agent. Nine distinct roles are seeded; the execution backend reports which roles and controlled tools are actually available.
+`saveCreationDraft()` persists an independent creation form, including a blank name. `createFromDraft()` validates the completed form and publishes its project exactly once. `openWorkspace()` reopens the latest dialogue for a target and role version; its optional `newConversation` argument creates an independent dialogue with a reserved Session ID without creating an Agent. Nine distinct roles are seeded; the execution backend reports which roles and controlled tools are actually available.
 
 `startAssistant()` resolves dependencies, freezes the full local input and approved references, and records an idempotent task before dispatch. A workspace admits one running task. Proposals store immutable before/after values; `applyProposal()` checks selected field locks, current local values and the saved base revision in one transaction. An applied proposal creates a new draft revision. `submitReview()` and `decideReview()` are separate human operations on exact saved content; a stale or archived target cannot be approved.
 
@@ -107,7 +107,7 @@ Stop every host using the database, copy its containing directory with all SQLit
 
 SQLite schema version 5 stores one complete project document per immutable revision. A project ID identifies its revision sequence; a separate permanent episode-owner table prevents cross-project reuse. Writer transactions acquire SQLite's immediate lock before reading the expected revision and insert content and new ownership records atomically. SQL triggers reject revision updates/deletions and ownership changes. WAL with FULL synchronization preserves committed writes, and plugin disposal closes the connection.
 
-The package publishes no `./invariant` companion: persisted document/column/owner relationships are validated on reads and task admission. Folder and Session routing entries share their owning open/close lifecycle; recent summaries are explicitly cached metadata, not a live document mirror. The [store](src/project-store.ts), [folder owner](src/project-folders.ts), and [input validators](src/validation.ts) own these checks. The [focused tests](tests/projects.spec.ts) and [folder tests](tests/folders.spec.ts) cover SQLite behavior, relocation and write ownership.
+No invariant companion is published: persisted document/column/owner relationships are validated on reads and task admission. Folder and Session routing entries share their owning open/close lifecycle; recent summaries are explicitly cached metadata, not a live document mirror. The [store](src/project-store.ts), [folder owner](src/project-folders.ts), and [input validators](src/validation.ts) own these checks. The [focused tests](tests/projects.spec.ts) and [folder tests](tests/folders.spec.ts) cover SQLite behavior, relocation and write ownership.
 
 </details>
 

@@ -10,7 +10,7 @@ A professional conversation can outlive the page that started it. Reusing one ge
 
 ## Decision
 
-The [project service](../../../../packages/multica/studio-core/README.md) persists role revisions, target-bound workspaces, frozen task inputs, proposals and human reviews. A workspace reserves a dedicated Session ID before any Agent runs. Publishing a role configuration creates a new workspace version. Request IDs make uncertain transport retries idempotent; one workspace admits one running task.
+The [project service](../../../../packages/multica/studio-core/README.md) persists role revisions, target-bound workspaces, frozen task inputs, proposals and human reviews. A workspace reserves a dedicated Session ID before any Agent runs. Publishing a role configuration creates a new workspace version. Dialogue selection and independent Session rendering follow the [Chat Feed decision](2026-09-30-independent-chat-feed.md). Request IDs make uncertain transport retries idempotent; one workspace admits one running task.
 
 The [professional runtime](../../../../packages/multica/studio-agents/README.md) logs each captured task as ordinary user-message content and reuses the shared structured-output capture protocol. Permanent Agent-scoped guards reject unrelated chat and inherited tools. The safe `multica` preset contains no write capabilities. Selected skills contribute text; trusted context tools can read only within the captured task scope.
 

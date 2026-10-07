@@ -20,6 +20,12 @@ Missing pnpm is downloaded through Corepack or npx using package.json's version.
   ./startup.sh                  Start on the default port (3080) and open the browser
   ./startup.sh --port 8080      Use another port (0 selects a free port)
   ./startup.sh --no-open        Print the URL without opening the browser
+  ./startup.sh --check-network  Check proxy selection without installing, building, or starting
+
+Proxy priority: launch environment, current DSH_HOME/.env, ~/.dsh/.env, macOS system proxy.
+Unreachable explicit proxies stop startup. Auto-detected fallbacks are checked each run.
+Set DSH_STARTUP_PROXY=direct to explicitly bypass proxies.
+DSH_STARTUP_PROXY_TIMEOUT_MS sets the listener probe timeout (default 3000).
 
 Keep this terminal open; press Ctrl+C to stop the server.
 Data and profiles default to this checkout's .dsh-local/ directory.
@@ -33,7 +39,7 @@ printf '[startup] Source checkout: %s\n[startup] Data and profiles: %s\n' "$PWD"
 
 printf '[startup] Checking prerequisites...\n'
 command -v node >/dev/null 2>&1 || fail 'Node.js is missing. Install Node.js 22.19+ (22.x) or 24+, then rerun ./startup.sh.'
-node --input-type=module <<'NODE'
+node --input-type=module - "${1:-}" <<'NODE'
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 const manifest = JSON.parse(readFileSync('package.json', 'utf8'))
@@ -47,11 +53,30 @@ if (process.platform !== 'darwin' && process.platform !== 'linux') {
   process.exit(1)
 }
 const headers = resolve(dirname(process.execPath), '../include/node/node_api.h')
-if (!existsSync(headers)) {
+if (!existsSync(headers) && process.argv[2] !== '--check-network') {
   console.error(`[startup] Node development headers are missing: ${headers}. Install Node.js with its development headers.`)
   process.exit(1)
 }
 NODE
+
+printf '[startup] Checking network configuration...\n'
+startup_tempdir=$(mktemp -d "${TMPDIR:-/tmp}/dsh-startup.XXXXXX")
+startup_env_file="$startup_tempdir/proxy.env"
+cleanup_startup_env() {
+  rm -f -- "$startup_env_file"
+  rmdir -- "$startup_tempdir"
+}
+trap cleanup_startup_env EXIT
+node scripts/startup-network.mjs "$startup_env_file"
+while IFS= read -r -d '' proxy_name && IFS= read -r -d '' proxy_value; do
+  export "$proxy_name=$proxy_value"
+done < "$startup_env_file"
+cleanup_startup_env
+trap - EXIT
+if [[ "${1:-}" == '--check-network' ]]; then
+  [[ $# == 1 ]] || fail '--check-network does not accept Web options.'
+  exit 0
+fi
 
 for dependency in python3 make cc c++; do
   command -v "$dependency" >/dev/null 2>&1 || fail "Missing $dependency. On macOS run xcode-select --install; on Debian/Ubuntu install build-essential and python3."

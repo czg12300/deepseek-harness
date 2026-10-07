@@ -6,7 +6,7 @@ import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 /** Physical Multica database generation, stored in PRAGMA user_version. */
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6
 
 const APPLICATION_ID = 0x4d554c54
 
@@ -84,7 +84,7 @@ export function openDatabase(path: string, busyTimeoutMs: number): DatabaseSync 
           PRAGMA application_id = ${APPLICATION_ID};
           PRAGMA user_version = 1;
         `)
-      } else if ((version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== SCHEMA_VERSION)
+      } else if ((version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== SCHEMA_VERSION)
         || application !== APPLICATION_ID) {
         throw new Error(`Unsupported Multica database identity or schema version at ${path}: ${String(version)}`)
       }
@@ -160,6 +160,12 @@ export function openDatabase(path: string, busyTimeoutMs: number): DatabaseSync 
             name TEXT NOT NULL, mime TEXT NOT NULL, relative_path TEXT NOT NULL,
             byte_size INTEGER NOT NULL CHECK(byte_size > 0), created_at TEXT NOT NULL
           ) STRICT;
+          PRAGMA user_version = 5;
+        `)
+      }
+      if (db.prepare('PRAGMA user_version').get()?.user_version === 5) {
+        db.exec(`
+          UPDATE studio_workspaces SET binding_key = binding_key || ':' || id;
           PRAGMA user_version = ${SCHEMA_VERSION};
         `)
       }

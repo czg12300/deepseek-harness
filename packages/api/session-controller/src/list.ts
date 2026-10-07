@@ -130,12 +130,12 @@ export class ApiSessionList {
     const items: SessionSummary[] = []
     const cold: SessionHeader[] = []
     for (const record of records) {
+      if (record.header.cwd === undefined) continue
       const live = this.ctx.sessions.get(record.header.id)
       if (live !== undefined) {
         items.push(this.summaryFor(live))
         continue
       }
-      if (record.header.cwd === undefined) continue
       cold.push(record.header)
     }
     for (const header of cold) items.push(this.summarizeCold(header))

@@ -42,7 +42,7 @@ export interface WorkspaceInjected {
 }
 
 /** Framework-derived main workspace props. */
-export type WorkspaceProps = PropsRuntime<'main'> & PropsRenderSlots<'multica.assistant.composer'> &
+export type WorkspaceProps = PropsRuntime<'main'> & PropsRenderSlots<'multica.assistant.composer' | 'chat-feed.view'> &
   PropsLocale<'multica'> &
   PropsStore<ReturnType<typeof createMulticaStore>> &
   InjectFace<WorkspaceInjected>

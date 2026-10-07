@@ -7,20 +7,28 @@
  * same predicate function (covered by the workspace spec's frame assertion).
  */
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import { CommandId } from '@deepseek-ai/dsh-commands/brand'
 // Side-effect type imports: the configuration-event SessionEventMap merges.
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
-import { createSessionTestRemote, type TestSessionRemote } from './test-remote.ts'
+import { createSessionTestRemote, testSessionPersistence, type TestSessionRemote } from './test-remote.ts'
+import type { SessionSummary } from '../src/types.ts'
+
+const contexts = new Set<Context>()
+afterEach(async () => {
+  await Promise.all([...contexts].map(ctx => ctx.fiber.dispose()))
+  contexts.clear()
+})
 
 async function harness(): Promise<{ ctx: Context; remote: TestSessionRemote; attach: (session: Session) => void }> {
   const ctx = new Context()
+  contexts.add(ctx)
   await ctx.plugin(SessionStore)
   await ctx.plugin(AgentRegistry)
   return {
@@ -56,7 +64,7 @@ async function listBlank(remote: TestSessionRemote, id: string): Promise<boolean
 describe('summary blank = conversation not started', () => {
   it('standalone events (command lifecycle, plan/mode, title) keep the session blank', async () => {
     const { ctx, remote, attach } = await harness()
-    const session = ctx.sessions.create()
+    const session = ctx.sessions.create(undefined, { meta: { cwd: '/tmp' } })
     attach(session)
     expect(await listBlank(remote, session.id)).toBe(true)
     appendStandalone(session)
@@ -65,10 +73,33 @@ describe('summary blank = conversation not started', () => {
 
   it('the first turn clears blank', async () => {
     const { ctx, remote, attach } = await harness()
-    const session = ctx.sessions.create()
+    const session = ctx.sessions.create(undefined, { meta: { cwd: '/tmp' } })
     attach(session)
     appendStandalone(session)
     session.append('turn/start', { turn: 0 })
     expect(await listBlank(remote, session.id)).toBe(false)
+  })
+
+  it('keeps project-only Sessions out of live notifications and attached or cold listings', async () => {
+    const { ctx, remote } = await harness()
+    const added = vi.fn<(summary: SessionSummary) => void>()
+    ctx.on('api-session/added', added)
+    const project = ctx.sessions.create(SessionId('portable-professional'), { meta: { agentPreset: 'multica' } })
+    project.append('turn/start', { turn: 0 })
+    const ordinary = ctx.sessions.create(SessionId('ordinary-ungrouped'), { meta: { cwd: '/tmp' } })
+    ordinary.append('turn/start', { turn: 0 })
+    ctx.provide('sessionPersistence', testSessionPersistence(ctx, {
+      list: () => Promise.resolve([
+        { ...project.header, id: SessionId('cold-professional') },
+        { ...ordinary.header, id: SessionId('cold-ordinary') },
+      ]),
+    }) as never)
+
+    expect(added.mock.calls.map(([summary]) => summary.sessionId)).toEqual([ordinary.id])
+    const result = await remote.list({})
+    if (!result.ok) throw new Error('list failed')
+    expect(result.value.items.map(item => item.sessionId).sort()).toEqual(['cold-ordinary', ordinary.id])
+    const history = await remote.page({ address: { kind: 'session', sessionId: project.id } })
+    expect(history.ok).toBe(true)
   })
 })

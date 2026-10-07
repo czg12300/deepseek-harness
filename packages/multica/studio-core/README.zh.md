@@ -85,7 +85,7 @@ kind: "package-reference"
 
 ### 专业草稿与人工审查
 
-`saveCreationDraft()` 持久化独立创建表单，允许名称暂空。`createFromDraft()` 校验完整表单，并且只发布一次正式项目。`openWorkspace()` 将目标绑定到不可变角色版本和预留 Session ID，不创建 Agent。初始化登记九个不同角色；执行后端报告实际可用的角色及受控工具。
+`saveCreationDraft()` 持久化独立创建表单，允许名称暂空。`createFromDraft()` 校验完整表单，并且只发布一次正式项目。`openWorkspace()` 重新打开目标和角色版本对应的最近对话；其可选 `newConversation` 参数创建具有预留 Session ID 的独立对话，不创建 Agent。初始化登记九个不同角色；执行后端报告实际可用的角色及受控工具。
 
 `startAssistant()` 解析依赖，冻结完整本地输入和批准引用，在分派前记录幂等任务。同一工作区只允许一个运行中任务。提案保存不可变前后值；`applyProposal()` 在同一事务中校验选定字段锁、本地当前值和已保存基础版本。应用提案建立新草稿版本。`submitReview()` 与 `decideReview()` 是针对具体已保存内容的独立人工操作；过期或归档目标不能批准。
 

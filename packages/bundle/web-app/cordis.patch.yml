@@ -314,6 +314,12 @@
       config:
         autoSaveMs: 1000
 
+    - id: api-chat-feed
+      name: '@deepseek-ai/dsh-api-chat-feed'
+
+    - id: ui-chat-feed
+      name: '@deepseek-ai/dsh-client-ui-chat-feed'
+
     - id: ui-multica
       name: '@deepseek-ai/dsh-client-ui-multica'
 

@@ -20,6 +20,7 @@ import type { ProjectInput, StudioRequestId, StudioTaskId, StudioTask, StudioCre
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MockAdapter, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import StudioAgents from '../src/index.ts'
+import { ApiSessionList } from '../../../api/session-controller/src/list.ts'
 
 const contexts: Context[] = []
 const roots: string[] = []
@@ -144,6 +145,7 @@ describe('professional Sessions through Loader and the real loop', () => {
     expect((await a.projects.waitTask(first.id)).status).toBe('completed')
     expect(await a.ctx.sessionPersistence.stat(view.workspace.sessionId)).toBeDefined()
     expect((await a.ctx.sessionPersistence.stat(view.workspace.sessionId))?.header.cwd).toBeUndefined()
+    expect((await new ApiSessionList(a.ctx).list()).map(item => item.sessionId)).not.toContain(view.workspace.sessionId)
     await a.projects.closeFolder(folder.id)
     const b = await setup([proposed('Continued on device B')])
     const destination = join(b.home, 'renamed-project')
@@ -153,6 +155,7 @@ describe('professional Sessions through Loader and the real loop', () => {
     const restored = b.projects.openWorkspace({ kind: 'outline', projectId: project.id })
     expect(restored.workspace.sessionId).toBe(view.workspace.sessionId)
     expect(restored.tasks[0]?.reply).toContain('suggested change')
+    expect((await new ApiSessionList(b.ctx).list()).map(item => item.sessionId)).not.toContain(restored.workspace.sessionId)
     const second = await b.projects.startAssistant({ workspaceId: restored.workspace.id, requestId: randomUUID() as StudioRequestId, expectedRevision: 1, input: input(), prompt: 'Continue that discussion on device B.' })
     const result = await b.projects.waitTask(second.id)
     expect(result.status, result.error ?? '').toBe('completed')

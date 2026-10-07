@@ -2,7 +2,7 @@
 import { createElement, useSyncExternalStore } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { EpisodeId, Project, ProjectId, ProjectInput, ProjectSummary, StudioFolderId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { EpisodeId, Project, ProjectId, ProjectInput, ProjectSummary, ScriptDocumentId, StudioFolderId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import { createMulticaStore, emptyInput } from '../src/client/drafts.ts'
@@ -10,13 +10,13 @@ import { ProjectModel, type ProjectApi } from '../src/client/projects.ts'
 import { Workspace, type WorkspaceProps } from '../src/client/Workspace.tsx'
 import { studioFixture, workspace, role } from './studio-fixture.client.ts'
 import type { StudioProposal, StudioReview, StudioTaskView } from '@deepseek-ai/dsh-api-remotes/client'
-import { studioTargetKey, type StudioModel } from '../src/client/studio.ts'
+import { type StudioModel } from '../src/client/studio.ts'
 import type { PortableProjectActions } from '../src/client/ProjectLocation.tsx'
 import { MulticaIcon } from '../src/client/MulticaIcon.tsx'
 import { exportDraft, VersionPreview } from '../src/client/VersionPreview.tsx'
 import { en, zh, type MulticaKey } from '../src/client/locales.ts'
 import { ActorModel } from '../src/client/actors.ts'
-import { ProjectContentModel } from '../src/client/project-content.ts'
+import { ProjectContentModel, type ProjectContentApi } from '../src/client/project-content.ts'
 
 const id = '00000000-0000-4000-8000-000000000001' as ProjectId
 const id2 = '00000000-0000-4000-8000-000000000002' as ProjectId
@@ -96,11 +96,12 @@ function fixture(values: Project[] = [], dictionary: Record<MulticaKey, string> 
     actor: vi.fn(async () => null), save: vi.fn(), export: vi.fn(), import: vi.fn(),
   })
   models.push(actorModel)
-  const contentModel = new ProjectContentModel({
+  const contentApi: ProjectContentApi = {
     documents: vi.fn(async () => []), saveDocument: vi.fn(), complete: vi.fn(async () => false),
     confirm: vi.fn(), units: vi.fn(async () => []), createUnit: vi.fn(), nodes: vi.fn(async () => []),
     addNode: vi.fn(), moveNode: vi.fn(), assets: vi.fn(async () => []), importMedia: vi.fn(), mediaData: vi.fn(async () => null),
-  })
+  }
+  const contentModel = new ProjectContentModel(contentApi)
   models.push(contentModel)
   // These standard seats are unused by this root-scoped feature; the fixture binds only its declared sources.
   const props = {
@@ -127,7 +128,11 @@ function fixture(values: Project[] = [], dictionary: Record<MulticaKey, string> 
     save: (pid, draft, archived) => model.save(pid, draft, store.actions, archived),
     history: (pid: ProjectId) => model.history(pid),
     reportUnsaved: vi.fn(),
-    renderSlot: (_name, values) => {
+    renderSlot: (name, values) => {
+      if (name === 'chat-feed.view') {
+        const owner = values as unknown as SlotMap['chat-feed.view']['owner']
+        return <p data-feed-session={owner.sessionId}>{owner.emptyText}</p>
+      }
       const owner = values as unknown as SlotMap['multica.assistant.composer']['owner']
       return <>
         <textarea aria-label={owner.label} value={owner.value} disabled={owner.disabled}
@@ -136,7 +141,7 @@ function fixture(values: Project[] = [], dictionary: Record<MulticaKey, string> 
       </>
     },
   } as WorkspaceProps
-  return { props, store, api, model, studio }
+  return { props, store, api, model, studio, contentApi }
 }
 
 function mockDownloads() {
@@ -172,6 +177,47 @@ async function openCard(name: string): Promise<void> {
 }
 
 describe('Multica workspace', () => {
+  it('sends a newly saved portable episode to its writer without reopening the project', async () => {
+    const { props, api, studio, contentApi } = fixture([project()])
+    api.folders = vi.fn(async () => [{
+      id: '00000000-0000-4000-8000-000000000003' as StudioFolderId,
+      projectId: id, creationId: null, path: '/drive/rain', name: 'Rain', state: 'open' as const,
+    }])
+    vi.spyOn(contentApi, 'documents').mockImplementation(async (pid) => {
+      const saved = await api.get(pid)
+      return saved!.episodes.map(episode => ({
+        id: episode.id as unknown as ScriptDocumentId, projectId: pid, kind: 'episode' as const,
+        episodeId: episode.id, title: `${episode.title}.md`, relativePath: `scripts/episodes/${episode.id}.md`,
+        markdown: episode.script, revision: saved!.revision,
+      }))
+    })
+    vi.mocked(studio.api.catalog).mockResolvedValue({
+      backendAvailable: true, enabledRoles: ['planner', 'writer'], defaultModel: null, skills: [], tools: [],
+    })
+    const send = vi.spyOn(props.studioActions, 'send').mockResolvedValue(undefined)
+    const portable: PortableProjectActions = {
+      pick: vi.fn(), open: vi.fn(), reveal: vi.fn(), prepare: vi.fn(), close: vi.fn(), forget: vi.fn(),
+      backup: vi.fn(), migrate: vi.fn(), autosave: vi.fn(), select: vi.fn(),
+    }
+    render(<Workspace {...props} portable={portable} />)
+    fireEvent.click(within(await screen.findByRole('article', { name: 'Rain' })).getByRole('button', { name: en.open }))
+    const add = await screen.findByRole('button', { name: en.addEpisode })
+    await waitFor(() => { expect(add).toHaveProperty('disabled', false) })
+    fireEvent.click(add)
+    const dialog = screen.getByRole('dialog', { name: en.addEpisode })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: en.episodeTitle }), { target: { value: 'The arrival' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: en.addEpisode }))
+    await screen.findByRole('heading', { name: 'The arrival' })
+    const message = await screen.findByRole('textbox', { name: en.assistantMessage })
+    await waitFor(() => { expect(message).toHaveProperty('disabled', false) })
+    fireEvent.change(message, { target: { value: 'Write the opening scene' } })
+    fireEvent.click(screen.getByRole('button', { name: en.send }))
+    const saved = await api.get(id)
+    expect(send).toHaveBeenCalledWith(expect.any(String), 2,
+      expect.objectContaining({ episodes: saved!.episodes }), 'Write the opening scene', undefined)
+    expect(studio.api.open).toHaveBeenLastCalledWith({ kind: 'episode', projectId: id, episodeId: saved!.episodes[0]!.id }, false)
+  })
+
   it('switches the project and actor catalogs as tabs in one workspace', async () => {
     const { props } = fixture([], en)
     render(<Workspace {...props} />)
@@ -268,7 +314,7 @@ describe('Multica workspace', () => {
     expect(api.create).not.toHaveBeenCalled()
   })
 
-  it('creates manually with illustrated aspect choices and nullable scale, without adding episodes', async () => {
+  it('creates manually with the default aspect ratio and nullable scale, without adding episodes', async () => {
     const { props, api } = fixture()
     render(<Workspace {...props} />)
     fireEvent.click(screen.getAllByRole('button', { name: en.newProject })[0]!)
@@ -278,14 +324,15 @@ describe('Multica workspace', () => {
     fireEvent.change(screen.getByRole<HTMLInputElement | HTMLTextAreaElement>('textbox', { name: en.concept }), {
       target: { value: '🌊'.repeat(3000) },
     })
-    fireEvent.click(screen.getByRole('radio', { name: en.portrait }))
+    expect(screen.queryByRole('group', { name: en.ratio })).toBeNull()
+    expect(screen.queryByRole('radio')).toBeNull()
     expect(screen.queryByRole('spinbutton')).toBeNull()
     expect(screen.queryByRole('textbox', { name: en.source })).toBeNull()
     expect(screen.queryByText(en.optionalSettings)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: en.create }))
     await screen.findByRole<HTMLInputElement | HTMLTextAreaElement>('textbox', { name: en.outline })
     expect(api.create).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New story', aspectRatio: '9:16', targetEpisodes: null, episodeDuration: null, episodes: [] }),
+      expect.objectContaining({ name: 'New story', aspectRatio: '16:9', targetEpisodes: null, episodeDuration: null, episodes: [] }),
     )
     expect(api.save).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: en.send }).hasAttribute('disabled')).toBe(true)
@@ -663,11 +710,11 @@ describe('Multica workspace', () => {
     const renderComposer = vi.fn(props.renderSlot)
     render(<Workspace {...props} renderSlot={renderComposer as unknown as WorkspaceProps['renderSlot']} />)
     await openCard('Rain')
-    await screen.findByText('Connected')
+    await waitFor(() =>{  expect(renderComposer).toHaveBeenCalledWith('chat-feed.view', expect.objectContaining({ sessionId: initial.workspace.sessionId })) })
     expect(renderComposer).toHaveBeenLastCalledWith('multica.assistant.composer', expect.objectContaining({
       selection: { provider: 'connected', model: 'working', reasoningEffort: 'high' },
     }))
-    await act(async () => { store.actions.assistantModel(studioTargetKey(target), { provider: 'other', model: 'chosen' }) })
+    await act(async () => { store.actions.assistantModel(initial.workspace.id, { provider: 'other', model: 'chosen' }) })
     expect(renderComposer).toHaveBeenLastCalledWith('multica.assistant.composer', expect.objectContaining({
       selection: { provider: 'other', model: 'chosen' },
     }))

@@ -245,16 +245,19 @@ export class StudioWorkflowStore {
 
   /** Bind a target to the current role version without creating or driving an Agent.
    * @param target - project, episode, or independent creation draft.
+   * @param newConversation - create a separate dialogue under the current role version.
    * @returns a durable workspace with a reserved Session identity.
    */
-  open(target: StudioTarget): StudioWorkspace {
+  open(target: StudioTarget, newConversation = false): StudioWorkspace {
     const parsed = targetSchema.parse(target)
     this.requireTarget(parsed)
     return transaction(this.db, () => {
       const role = this.roles().find(value => value.role === roleForTarget(parsed))
       if (!role) throw new Error('The required professional role is not configured')
       const key = `${targetKey(parsed)}:${role.role}:${role.revision}`
-      const existing = this.db.prepare('SELECT * FROM studio_workspaces WHERE binding_key = ?').get(key)
+      const existing = newConversation ? undefined : this.db.prepare(
+        "SELECT * FROM studio_workspaces WHERE json_extract(document, '$.target') = ? AND json_extract(document, '$.role.role') = ? AND json_extract(document, '$.role.revision') = ? ORDER BY rowid DESC LIMIT 1",
+      ).get(targetKey(parsed), role.role, role.revision)
       if (existing) return this.decodeWorkspace(existing)
       const workspace = workspaceSchema.parse({
         id: randomUUID(),
@@ -267,7 +270,7 @@ export class StudioWorkflowStore {
       })
       this.db
         .prepare('INSERT INTO studio_workspaces (id, binding_key, session_id, document) VALUES (?, ?, ?, ?)')
-        .run(workspace.id, key, workspace.sessionId, JSON.stringify(workspace))
+        .run(workspace.id, `${key}:${workspace.id}`, workspace.sessionId, JSON.stringify(workspace))
       return workspace
     })
   }
@@ -309,7 +312,7 @@ export class StudioWorkflowStore {
 
   private decodeWorkspace(row: Record<string, unknown>): StudioWorkspace {
     const workspace = workspaceSchema.parse(JSON.parse(z.string().parse(row.document)))
-    const key = `${targetKey(workspace.target)}:${workspace.role.role}:${workspace.role.revision}`
+    const key = `${targetKey(workspace.target)}:${workspace.role.role}:${workspace.role.revision}:${workspace.id}`
     if (workspace.id !== row.id || workspace.sessionId !== row.session_id || key !== row.binding_key)
       throw new Error('Workspace identity disagrees with its binding columns')
     const role = this.db
@@ -343,6 +346,8 @@ export class StudioWorkflowStore {
         return {
           id: bound.id,
           roleRevision: bound.role.revision,
+          title: Array.from((this.db.prepare("SELECT json_extract(document, '$.prompt') AS prompt FROM studio_tasks WHERE workspace_id = ? ORDER BY rowid LIMIT 1").get(bound.id)?.prompt as string | undefined) ?? '').slice(0, 50).join(''),
+          createdAt: bound.createdAt,
           running: this.db.prepare("SELECT 1 FROM studio_tasks WHERE workspace_id = ? AND state = 'running'").get(bound.id) !== undefined,
         }
       })

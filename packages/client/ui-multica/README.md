@@ -20,7 +20,11 @@ Open “Comics” in the left sidebar to manage projects, script Markdown, produ
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-The assistant panel preserves unsent prompts per target and displays task status, configuration version, selected skills and controlled tools. Expand “Draft export and planning assistant” on the creation page to use the planner. Sending a creation prompt first saves its independent form; creating the formal project remains a separate action. Compare before/after values and choose fields before applying. Later manual edits and locked fields are protected. Application never approves content. The review center requires a selected saved revision and a separate human decision.
+The assistant uses [Chat Feed](../ui-chat-feed/README.md) for Session history and streaming output. Its conversation list and new-conversation action belong to Multica. Switching dialogues preserves each dialogue’s input and model choice; tasks and proposals retain their original dialogue.
+
+Adding an episode saves it into the project and synchronizes the local draft before opening its writer assistant, so the first request includes the saved episode.
+
+The assistant panel preserves unsent prompts per dialogue and displays task status, configuration version, selected skills and controlled tools. Expand “Draft export and planning assistant” on the creation page to use the planner. Sending a creation prompt first saves its independent form; creating the formal project remains a separate action. Compare before/after values and choose fields before applying. Later manual edits and locked fields are protected. Application never approves content. The review center requires a selected saved revision and a separate human decision.
 
 Agent configuration lists all nine roles and actual capabilities. Planner and writer are enabled by the host runtime; other roles remain unavailable. Publishing a configuration opens a new version-bound conversation for subsequent tasks. Existing conversations remain readable, and running tasks retain their original role and object.
 
@@ -46,7 +50,7 @@ Inside a folder-backed project, the left directory lists story Markdown, product
 
 The [Web bundle](../../bundle/web-app/README.md) mounts this browser plugin alongside the [project service](../../multica/studio-core/README.md). It has no plugin configuration fields. The sidebar entry is “Comics” in English and “漫剧” in Chinese; it remains available as an icon with a tooltip when the sidebar is collapsed.
 
-Create a project with one concept or source script. “More settings (optional)” contains the name and production specifications; the initial aspect ratio is 16:9 and episode count and duration are undecided. An omitted name uses the first 50 Unicode code points of the trimmed concept, or “Untitled project” in the current locale when only source text is supplied. All fields remain editable in project settings. Importing a UTF-8 `.txt` or `.md` file copies its source text into the draft; it does not generate episodes. The project sidebar selects the outline, episode list, individual scripts, settings and history. Project settings also rename, archive and restore the project.
+Create a project with one concept or source script. The creation dialog omits the aspect-ratio selector; new drafts default to 16:9, with episode count and duration undecided. An omitted name uses the first 50 Unicode code points of the trimmed concept, or “Untitled project” in the current locale when only source text is supplied. All fields remain editable in project settings. Importing a UTF-8 `.txt` or `.md` file copies its source text into the draft; it does not generate episodes. The project sidebar selects the outline, episode list, individual scripts, settings and history. Project settings also rename, archive and restore the project.
 
 Each save submits the complete project against its draft's expected revision. A conflict displays the current saved content alongside the local draft. The user can export the local draft, explicitly discard it and load the current saved version, or confirm the local content as a new version. Confirming local content replaces the complete remote project content; it is not a field-level merge. Archived projects remain read-only until restored.
 
@@ -62,7 +66,7 @@ Unsaved drafts and the selected page survive project navigation and main-panel r
 
 The browser entry registers the `multica` main panel and sidebar icon through the existing slots. A declared store holds navigation and unsaved drafts; a separate Remote query model publishes observed saved projects through an injected framework hook. Requests retain their project identity across navigation. Read sequencing and revision checks reject stale observations, while disposal suppresses late publications. The host service remains authoritative for persistence and archive state.
 
-No `./invariant` companion is published: this plugin owns viewing state and pending drafts, and the host checks durable project relationships. The [revision decision](../../../.agents/notes/implemented/architecture/2026-09-10-multica-project-revisions.md) explains project-level versioning and Session separation.
+No invariant companion is published: this plugin owns viewing state and pending drafts, and the host checks durable project relationships. The [revision decision](../../../.agents/notes/implemented/architecture/2026-09-10-multica-project-revisions.md) explains project-level versioning and Session separation.
 
 </details>
 

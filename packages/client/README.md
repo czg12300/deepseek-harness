@@ -49,6 +49,8 @@ The kernel packages boot and serve the page; the UI feature packages present it.
 | [`ui-multica/`](ui-multica/README.md) | Comic-production projects, draft editing and version history | — |
 | [`ui-conversation/`](ui-conversation/README.md) | Presents the active conversation and its input surface | — |
 | [`ui-chat/`](ui-chat/README.md) | Projects and renders the Chat conversation target | — |
+| [`ui-chat-feed/`](ui-chat-feed/README.md) | Embeds independently selected Session transcripts | — |
+| [`chat-feed-contract/`](chat-feed-contract/README.md) | Types the application-owned feed slot | — |
 | [`ui-approval/`](ui-approval/README.md) | Presents approval requests and returns user decisions | — |
 | [`ui-tool/`](ui-tool/README.md) | Composes Tool call trees and keyed per-Tool views | — |
 | [`ui-workflow-run/`](ui-workflow-run/README.md) | Replays durable workflow runs as nested chat disclosures | — |

@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "commit": "98475343dfb95a7635f7a1c8f58a08427d2f160d",
+  "sources": [
+    "packages/client/ui-chat/src",
+    "packages/client/ui-tool/src/client",
+    "packages/client/ui-conversation/src/client/conversation",
+    "packages/api/session-controller/src/client/sessions/assistant-stream.ts"
+  ]
+}

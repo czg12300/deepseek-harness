@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-30-source-startup-proxy-preflight.md
+2026-09-30-source-startup-proxy-preflight.md: 0247faf147d0e8e9fdb8d9b805f76261f5864eab
+2026-09-30-source-startup-proxy-preflight.zh.md: c88e65ca17d38adee5608c8717b6c0093615bcab

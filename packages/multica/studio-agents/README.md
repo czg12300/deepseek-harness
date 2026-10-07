@@ -49,7 +49,7 @@ Host integrations register individual read-only tools through `registerContextTo
 
 The project database reserves Session IDs and owns tasks and proposals. This runtime creates or resumes the corresponding Agent, logs the complete captured input as ordinary user-message content, and installs task-local structured output. Permanent scoped guards block unowned chat input and inherited tools. Cancellation awaits actual task settlement. Missing previously initialized Session history fails explicitly instead of creating a replacement log.
 
-No `./invariant` companion is published: the project service validates durable task ownership at dispatch, and all active Agent/tool registrations are owned by Cordis effects. [Runtime tests](tests/runtime.spec.ts) mount the real Loader, loop and Session persistence, scripting only the external model response.
+No invariant companion is published: the project service validates durable task ownership at dispatch, and all active Agent/tool registrations are owned by Cordis effects. [Runtime tests](tests/runtime.spec.ts) mount the real Loader, loop and Session persistence, scripting only the external model response.
 
 </details>
 

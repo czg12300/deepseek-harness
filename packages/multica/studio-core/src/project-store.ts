@@ -375,11 +375,12 @@ export class ProjectStore {
 
   /** Open recorded dialogue without starting an Agent or making a model request.
    * @param target - stable project, episode, or creation-form target.
+   * @param newConversation - create a separate dialogue instead of reopening the latest one.
    * @returns its current role-version binding and recorded work.
    */
-  openWorkspace(target: StudioTarget): StudioWorkspaceView {
+  openWorkspace(target: StudioTarget, newConversation = false): StudioWorkspaceView {
     this.assertWritable()
-    return this.workflow.view(this.workflow.open(target).id)
+    return this.workflow.view(this.workflow.open(target, newConversation).id)
   }
 
   /** Read a previously bound workspace, including in-flight tasks from an older role version.

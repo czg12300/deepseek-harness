@@ -74,7 +74,7 @@ export function ProjectWorkspaceV2({ state, queries, studio, content, id, choose
       const episodeId = randomUUID() as EpisodeId
       const saved = await save(id, { ...draft, input: { ...draft.input,
         episodes: [...draft.input.episodes, { id: episodeId, title: episodeTitle.trim(), script: '' }],
-      }, dirty: true, edit: draft.edit + 1 })
+      }, dirty: true })
       if (!saved) throw new Error(t('failed'))
       await contentActions.load(id)
       setCreatingEpisode(false)

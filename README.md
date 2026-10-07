@@ -44,6 +44,8 @@ On macOS or Linux, run [`./startup.sh`](startup.sh) from the checkout for depend
 
 The script defaults to the checkout's gitignored `.dsh-local/` for profiles, settings, and history, isolating it from desktop applications using `~/.dsh`. Set `DSH_HOME` explicitly to reuse another data directory. The startup output identifies both the source checkout and data directory.
 
+Before installing dependencies, the launcher checks proxy configuration in this order: the launching environment, the current `$DSH_HOME/.env`, `~/.dsh/.env`, then macOS static HTTP proxy settings. It checks proxy-listener reachability, exports the selected settings for this run, and keeps localhost callbacks direct without rewriting either `.env`. Invalid or unreachable explicit settings stop startup; an unavailable shared-home proxy can fall back to the system proxy. Use `./startup.sh --check-network` to inspect this without building or launching, or `DSH_STARTUP_PROXY=direct ./startup.sh` to choose direct networking explicitly. `DSH_STARTUP_PROXY_TIMEOUT_MS` sets the per-listener timeout in milliseconds (default 3000). This check verifies the proxy listener, not provider availability or account authorization.
+
 ## Community and support
 
 - Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).

@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-client-chat-feed-contract'
 /** Multica browser registration; services remain outside React components. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteResult, StudioFolderId, ProjectId } from '@deepseek-ai/dsh-api-remotes/client'
@@ -8,7 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 export type {} from './composer.ts'
 import { createMulticaStore, type MulticaDrafts, type ProjectDraft } from './drafts.ts'
 import { ProjectModel } from './projects.ts'
-import { StudioModel, studioTargetKey } from './studio.ts'
+import { StudioModel } from './studio.ts'
 import { Workspace, type WorkspaceInjected } from './Workspace.tsx'
 import { MulticaIcon } from './MulticaIcon.tsx'
 import { en, NS, zh, type MulticaKey } from './locales.ts'
@@ -75,7 +76,7 @@ export function apply(ctx: Context): void {
     creations: () => unwrap(ctx.remote.studioProjects.creationDrafts()),
     creation: id => unwrap(ctx.remote.studioProjects.creationDraft(id)),
     saveCreation: (id, revision, input) => unwrap(ctx.remote.studioProjects.saveCreationDraft(id, revision, input)),
-    open: target => unwrap(ctx.remote.studioProjects.openWorkspace(target)),
+    open: (target, fresh) => unwrap(ctx.remote.studioProjects.openWorkspace(target, fresh)),
     workspace: id => unwrap(ctx.remote.studioProjects.workspace(id)),
     start: request => unwrap(ctx.remote.studioProjects.startAssistant(request)),
     wait: id => unwrap(ctx.remote.studioProjects.waitTask(id)),
@@ -147,7 +148,7 @@ export function apply(ctx: Context): void {
         name: 'main',
         key: 'multica',
         locale: NS,
-        children: { 'multica.assistant.composer': { kind: 'single', scope: 'root' } },
+        children: { 'multica.assistant.composer': { kind: 'single', scope: 'root' }, 'chat-feed.view': { kind: 'single', scope: 'root' } },
         store,
         inject: (actions): WorkspaceInjected => ({
           portable: {
@@ -225,13 +226,13 @@ export function apply(ctx: Context): void {
               studio.resumeCreation(id, (draft) => {
                 actions.restoreCreation(draft)
               }),
-            open: target => studio.open(target),
+            open: (target, fresh) => studio.open(target, fresh),
             refresh: id => studio.refresh(id),
             selectVersion: (target, id) => studio.selectVersion(target, id),
             send: async (id, revision, input, prompt, modelSelection) => {
               const view = studio.source.getSnapshot().byId[id]?.view
               if (!view) return
-              const key = studioTargetKey(view.workspace.target)
+              const key = id
               if (view.workspace.target.kind === 'creation') {
                 const saved = await studio.saveCreation(view.workspace.target.draftId, revision, input)
                 if (!saved) return
@@ -247,7 +248,7 @@ export function apply(ctx: Context): void {
               const view = studio.source.getSnapshot().byId[id]?.view
               const request = studio.source.getSnapshot().byId[id]?.retry
               return studio.retry(id, () => {
-                if (view && request) actions.promptSubmitted(studioTargetKey(view.workspace.target), request.prompt)
+                if (view && request) actions.promptSubmitted(id, request.prompt)
               })
             },
             abandon: (id) => {

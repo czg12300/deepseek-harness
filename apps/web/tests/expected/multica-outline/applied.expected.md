@@ -48,15 +48,23 @@
     - button "Agent configuration"
     - button "Refresh conversation"
     - paragraph: "Current target: Story outline · Version 2"
-    - region "Create the story outline on the left":
-      - strong: Create the story outline on the left
-      - paragraph: Develop the plot, character arcs and ending from your project concept and current draft. Apply the generated outline directly to the editor.
     - group: Work history and settings
+    - button "Conversations"
+    - button "New conversation"
+    - button "System prompt":
+      - img
+      - img
+      - text: System prompt
+    - text: Develop the current story outline in the editor. Strengthen character motivations, causality, pacing and the ending while preserving the core setting. Explain the main changes and return the complete revised text as an outline proposal I can apply to the editor.
+    - button "▸ Extra content block"
+    - text: {{clock}}
+    - button "Copy":
+      - img
+    - button "Tool call structured_output · The outline is ready to apply.":
+      - img
+      - img
+      - text: Tool call structured_output · The outline is ready to apply.
     - article:
-      - strong: Your request
-      - paragraph: Develop the current story outline in the editor. Strengthen character motivations, causality, pacing and the ending while preserving the core setting. Explain the main changes and return the complete revised text as an outline proposal I can apply to the editor.
-      - strong: Planning assistant
-      - text: Completed
       - paragraph: The outline is ready to apply.
       - region "Change proposal":
         - heading "Change proposal" [level=3]

@@ -48,6 +48,8 @@ pnpm dsh web
 
 脚本默认将配置、设置和历史记录保存在仓库内被 Git 忽略的 `.dsh-local/`，与使用 `~/.dsh` 的桌面应用隔离。显式设置 `DSH_HOME` 可复用其他数据目录。启动输出会标明源码目录和数据目录。
 
+安装依赖前，启动器依次检查启动环境、当前 `$DSH_HOME/.env`、`~/.dsh/.env` 和 macOS 静态 HTTP 代理设置。它检查代理监听地址是否可达，将选定配置传给本次进程，并保持 localhost 回调直连，不改写任何 `.env`。显式配置无效或不可达时停止启动；共享目录中的代理不可用时可改用系统代理。使用 `./startup.sh --check-network` 可仅检查网络而不构建或启动应用；使用 `DSH_STARTUP_PROXY=direct ./startup.sh` 可明确选择直连。`DSH_STARTUP_PROXY_TIMEOUT_MS` 设置单个代理监听地址的超时毫秒数，默认 3000。此检查确认代理监听地址可达，不代表提供方服务或账号授权成功。
+
 ## 社区与支持
 
 - 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

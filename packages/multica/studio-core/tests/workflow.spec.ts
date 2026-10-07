@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { DatabaseSync } from 'node:sqlite'
+import { openDatabase } from '../src/database.ts'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import StudioProjects from '../src/index.ts'
@@ -383,4 +385,45 @@ describe('professional authoring transactions', () => {
     expect(await f.service.assistantCatalog()).toMatchObject({ backendAvailable: false, enabledRoles: [] })
     await expect(f.service.publishRole('planner', 1, role.config)).rejects.toThrow('not configured')
   })
+})
+
+
+it('keeps separate dialogues under one role version and reopens the latest without losing history', async () => {
+  const f = await fixture()
+  const project = f.service.create(input())
+  const target = { kind: 'outline' as const, projectId: project.id }
+  const first = f.service.openWorkspace(target)
+  const second = f.service.openWorkspace(target, true)
+  expect(second.workspace.id).not.toBe(first.workspace.id)
+  expect(second.workspace.sessionId).not.toBe(first.workspace.sessionId)
+  expect(second.workspace.role.revision).toBe(first.workspace.role.revision)
+  expect(f.service.openWorkspace(target).workspace.id).toBe(second.workspace.id)
+  expect(f.service.workspace(first.workspace.id).workspace.sessionId).toBe(first.workspace.sessionId)
+  expect(second.versions.map(version => version.id)).toEqual([second.workspace.id, first.workspace.id])
+})
+
+
+it('migrates existing dialogue keys without changing Session IDs or workspace documents', async () => {
+  const f = await fixture()
+  const project = f.service.create(input())
+  const view = f.service.openWorkspace({ kind: 'outline', projectId: project.id })
+  await f.ctx.fiber.dispose()
+  const path = join(f.home, 'multica', 'studio.sqlite')
+  const previous = new DatabaseSync(path)
+  let document: unknown
+  try {
+    const row = previous.prepare('SELECT binding_key, document FROM studio_workspaces WHERE id = ?').get(view.workspace.id)!
+    document = row.document
+    previous.prepare('UPDATE studio_workspaces SET binding_key = ? WHERE id = ?')
+      .run(String(row.binding_key).slice(0, -view.workspace.id.length - 1), view.workspace.id)
+    previous.exec('PRAGMA user_version = 5')
+  } finally { previous.close() }
+  const migrated = openDatabase(path, 1000)
+  try {
+    const row = migrated.prepare('SELECT binding_key, session_id, document FROM studio_workspaces WHERE id = ?').get(view.workspace.id)!
+    expect(row.session_id).toBe(view.workspace.sessionId)
+    expect(row.document).toBe(document)
+    expect(String(row.binding_key).endsWith(`:${view.workspace.id}`)).toBe(true)
+    expect(migrated.prepare('PRAGMA user_version').get()?.user_version).toBe(6)
+  } finally { migrated.close() }
 })

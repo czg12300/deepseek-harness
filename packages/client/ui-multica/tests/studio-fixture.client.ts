@@ -6,7 +6,7 @@ import type {
   StudioWorkspaceId,
   StudioWorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
-import { StudioModel, studioTargetKey, type StudioApi, type StudioActions } from '../src/client/studio.ts'
+import { StudioModel, type StudioApi, type StudioActions } from '../src/client/studio.ts'
 import type { createMulticaStore } from '../src/client/drafts.ts'
 
 const date = '2026-09-11T00:00:00.000Z'
@@ -41,7 +41,7 @@ export function workspace(target: StudioTarget, id = '00000000-0000-4000-8000-00
     lockedFields: [],
     allowedFields: ['outline'],
     creation: null,
-    versions: [{ id, roleRevision: 1, running: false }],
+    versions: [{ id, roleRevision: 1, running: false, title: '', createdAt: date }],
   }
 }
 const unused = async (): Promise<never> => {
@@ -79,13 +79,13 @@ export function studioFixture(store?: ReturnType<ReturnType<typeof createMultica
       model.resumeCreation(id, (draft) => {
         store?.actions.restoreCreation(draft)
       }),
-    open: target => model.open(target),
+    open: (target, fresh) => model.open(target, fresh),
     refresh: id => model.refresh(id),
     selectVersion: (target, id) => model.selectVersion(target, id),
     send: (id, revision, input, prompt, modelSelection) =>
       model.send(id, revision, input, prompt, () => {
         const target = model.source.getSnapshot().byId[id]?.view?.workspace.target
-        if (target) store?.actions.promptSubmitted(studioTargetKey(target), prompt)
+        if (target) store?.actions.promptSubmitted(id, prompt)
       }, modelSelection),
     retry: id => model.retry(id, () => {}),
     abandon: (id) => {

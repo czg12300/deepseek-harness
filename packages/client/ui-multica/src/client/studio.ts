@@ -36,7 +36,7 @@ export interface StudioApi {
   catalog(this: void): Promise<StudioAssistantCatalog>
   roles(this: void): Promise<StudioRoleRevision[]>
   publishRole(this: void, role: StudioRoleId, revision: number, config: StudioRoleConfig): Promise<StudioRoleRevision>
-  open(this: void, target: StudioTarget): Promise<StudioWorkspaceView>
+  open(this: void, target: StudioTarget, newConversation?: boolean): Promise<StudioWorkspaceView>
   workspace(this: void, id: StudioWorkspaceId): Promise<StudioWorkspaceView>
   start(this: void, request: StudioTaskRequest): Promise<StudioTaskView>
   wait(this: void, id: StudioTaskId): Promise<StudioTaskView>
@@ -258,9 +258,17 @@ export class StudioModel {
 
   /** Open the current role version for a target; page changes do not submit a prompt.
    * @param target - authoring target selected by the user.
+   * @param newConversation - reserve a separate dialogue for this target.
    */
-  async open(target: StudioTarget): Promise<void> {
+  async open(target: StudioTarget, newConversation = false): Promise<void> {
     const key = studioTargetKey(target)
+    const selectedId = this.source.getSnapshot().bindings[key]
+    const selected = selectedId ? this.source.getSnapshot().byId[selectedId]?.view : undefined
+    const role = this.source.getSnapshot().roles.find(value => value.role === selected?.workspace.role.role)
+    if (!newConversation && selected && role?.revision === selected.workspace.role.revision) {
+      await this.refresh(selected.workspace.id)
+      return
+    }
     const request = (this.opens.get(key) ?? 0) + 1
     this.opens.set(key, request)
     this.source.update((state) => {
@@ -268,7 +276,7 @@ export class StudioModel {
       state.openErrors[key] = null
     })
     try {
-      const view = await this.api.open(target)
+      const view = await this.api.open(target, newConversation)
       if (!this.isAlive() || this.opens.get(key) !== request) return
       this.accept(view)
       this.source.update((state) => {
@@ -294,8 +302,10 @@ export class StudioModel {
     const current = this.source.getSnapshot().bindings[key]
     const versions = current ? this.source.getSnapshot().byId[current]?.view?.versions : undefined
     if (!versions?.some(version => version.id === id)) return
+    this.opens.set(key, (this.opens.get(key) ?? 0) + 1)
     this.source.update((state) => {
       state.bindings[key] = id
+      state.opening[key] = false
       state.byId[id] ??= query()
     })
     await this.refresh(id)
@@ -631,7 +641,7 @@ export interface StudioActions {
   saveCreation(id: StudioCreationId, revision: number | null, input: ProjectInput): Promise<void>
   resumeCreation(id: StudioCreationId): Promise<void>
   catalog(): Promise<void>
-  open(target: StudioTarget): Promise<void>
+  open(target: StudioTarget, newConversation?: boolean): Promise<void>
   refresh(id: StudioWorkspaceId): Promise<void>
   selectVersion(target: StudioTarget, id: StudioWorkspaceId): Promise<void>
   send(id: StudioWorkspaceId, revision: number | null, input: ProjectInput, prompt: string, modelSelection?: ModelSelection): Promise<void>

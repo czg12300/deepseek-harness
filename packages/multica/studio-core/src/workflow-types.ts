@@ -215,7 +215,7 @@ export interface StudioWorkspaceView {
   lockedFields: StudioField[]
   allowedFields: StudioField[]
   creation: StudioCreationDraft | null
-  versions: Array<{ id: StudioWorkspaceId; roleRevision: number; running: boolean }>
+  versions: Array<{ id: StudioWorkspaceId; roleRevision: number; running: boolean; title: string; createdAt: string }>
 }
 
 /** Trusted execution provider; professional models never receive these host callbacks. */

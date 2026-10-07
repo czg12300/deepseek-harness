@@ -2764,9 +2764,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the new immutable role revision.',
       },
       {
-        signature: '@Remote(\'openWorkspace\') openWorkspace(target: StudioTarget): StudioWorkspaceView',
+        signature: '@Remote(\'openWorkspace\') openWorkspace(target: StudioTarget, newConversation?: boolean): StudioWorkspaceView',
         description: 'Open recorded dialogue without starting an Agent or making a model request.',
-        parameters: [{ name: 'target', description: 'stable project, episode, or creation-form target.' }],
+        parameters: [{ name: 'target', description: 'stable project, episode, or creation-form target.' }, { name: 'newConversation', description: 'create a separate dialogue instead of reopening the latest one.' }],
         returns: 'its current role-version binding and recorded work.',
       },
       {
@@ -6862,7 +6862,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StudioWorkspaceView',
-    declaration: 'export interface StudioWorkspaceView {\n    workspace: StudioWorkspace;\n    tasks: StudioTaskView[];\n    proposals: StudioProposal[];\n    lockedFields: StudioField[];\n    allowedFields: StudioField[];\n    creation: StudioCreationDraft | null;\n    versions: Array<{\n        id: StudioWorkspaceId;\n        roleRevision: number;\n        running: boolean;\n    }>;\n}',
+    declaration: 'export interface StudioWorkspaceView {\n    workspace: StudioWorkspace;\n    tasks: StudioTaskView[];\n    proposals: StudioProposal[];\n    lockedFields: StudioField[];\n    allowedFields: StudioField[];\n    creation: StudioCreationDraft | null;\n    versions: Array<{\n        id: StudioWorkspaceId;\n        roleRevision: number;\n        running: boolean;\n        title: string;\n        createdAt: string;\n    }>;\n}',
   },
   {
     name: 'SubagentCapabilities',

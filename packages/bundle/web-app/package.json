@@ -128,7 +128,9 @@
     "@deepseek-ai/dsh-novel-core": "workspace:^",
     "@deepseek-ai/dsh-novel-agents": "workspace:^",
     "@deepseek-ai/dsh-novel-session-storage": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-novel": "workspace:^"
+    "@deepseek-ai/dsh-client-ui-novel": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-chat-feed": "workspace:^",
+    "@deepseek-ai/dsh-api-chat-feed": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

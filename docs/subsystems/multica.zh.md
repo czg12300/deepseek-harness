@@ -444,9 +444,10 @@ proposalFields(target: StudioTarget): StudioField[]
 
 /** Open recorded dialogue without starting an Agent or making a model request.
  * @param target - stable project, episode, or creation-form target.
+ * @param newConversation - create a separate dialogue instead of reopening the latest one.
  * @returns its current role-version binding and recorded work.
  */
-@Remote('openWorkspace') openWorkspace(target: StudioTarget): StudioWorkspaceView
+@Remote('openWorkspace') openWorkspace(target: StudioTarget, newConversation?: boolean): StudioWorkspaceView
 
 /** Read a previously bound workspace, including in-flight tasks from an older role version.
  * @param id - workspace identity.

@@ -755,12 +755,13 @@ export class StudioProjects extends TypertRemoteService {
 
   /** Open recorded dialogue without starting an Agent or making a model request.
    * @param target - stable project, episode, or creation-form target.
+   * @param newConversation - create a separate dialogue instead of reopening the latest one.
    * @returns its current role-version binding and recorded work.
    */
   @Remote('openWorkspace')
-  openWorkspace(target: StudioTarget): StudioWorkspaceView {
+  openWorkspace(target: StudioTarget, newConversation?: boolean): StudioWorkspaceView {
     const store = this.target(target)
-    const view = store.openWorkspace(target)
+    const view = store.openWorkspace(target, newConversation ?? false)
     const folder = [...this.folders.opened.values()].find(item => item.store === store)
     if (folder) this.sessionLocations.set(view.workspace.sessionId, { root: folder.info.path, check: folder.check, store })
     return view

@@ -1,5 +1,5 @@
 /** One professional dialogue and proposal UI shared by all authoring targets. */
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsStore, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -10,7 +10,7 @@ import type {
 import type { createMulticaStore, MulticaDrafts } from './drafts.ts'
 import type { StudioActions, StudioState } from './studio.ts'
 import { studioTargetKey } from './studio.ts'
-import { roleKeys, fieldKeys, taskLabels } from './locales.ts'
+import { roleKeys, fieldKeys } from './locales.ts'
 import css from './Workspace.module.css'
 
 /** Render a project field for human comparison without exposing internal episode identifiers.
@@ -23,7 +23,7 @@ export function fieldText(value: StudioFieldValue, empty: string): string {
   return Array.isArray(value) ? value.map(episode => `${episode.title}\n${episode.script}`).join('\n\n') : String(value)
 }
 
-type AssistantProps = PropsLocale<'multica'> & PropsRenderSlots<'multica.assistant.composer'> &
+type AssistantProps = PropsLocale<'multica'> & PropsRenderSlots<'multica.assistant.composer' | 'chat-feed.view'> &
   Pick<PropsStore<ReturnType<typeof createMulticaStore>>, 'actions'> & {
     state: MulticaDrafts
     studio: StudioState
@@ -51,13 +51,11 @@ export function AssistantPanel({
   const query = id ? studio.byId[id] : undefined
   const view = query?.view
   const running = view?.tasks.find(task => task.status === 'running')
-  const prompt = state.assistantPrompts[key] ?? ''
-  const dialogue = useRef<HTMLDivElement>(null)
+  const draftKey = id ?? key
+  const prompt = state.assistantPrompts[draftKey] ?? ''
+  const [conversationsOpen, setConversationsOpen] = useState(false)
   const lastSuccess = view?.tasks.filter(task => task.status === 'completed').at(-1)
-  useLayoutEffect(() => {
-    if (dialogue.current) dialogue.current.scrollTop = dialogue.current.scrollHeight
-  }, [id, view?.tasks.length, view?.tasks.at(-1)?.reply])
-  const selected = state.assistantModels[key] ?? lastSuccess ?? view?.workspace.resolved ?? (
+  const selected = state.assistantModels[draftKey] ?? lastSuccess ?? view?.workspace.resolved ?? (
     latestRole?.config.provider && latestRole.config.model
       ? { provider: latestRole.config.provider, model: latestRole.config.model }
       : studio.catalog?.defaultModel ?? null
@@ -110,7 +108,7 @@ export function AssistantPanel({
       <p className={css.contextLine}>
         {t('assistantContext', { name: targetName, version: revision === null ? t('creationDraft') : t('revision', { revision }) })}
       </p>
-      {outline && (
+      {outline && (!view || view.tasks.length === 0) && (
         <section className={css.assistantMission} aria-label={t('outlineMission')}>
           <strong>{t('outlineMission')}</strong>
           <p>{t('outlineMissionHint')}</p>
@@ -136,20 +134,6 @@ export function AssistantPanel({
             <>
               <details className={css.assistantSettings}>
                 <summary>{t('assistantSettings')}</summary>
-                <label className={css.field}>
-                  {t('workspaceVersion')}
-                  <select
-                    value={view.workspace.id}
-                    onChange={event => void studioActions.selectVersion(target, event.target.value as typeof view.workspace.id)}
-                  >
-                    {view.versions.map(version => (
-                      <option key={version.id} value={version.id}>
-                        {t('roleVersion', { revision: version.roleRevision })}
-                        {version.running ? ` · ${t('taskRunning')}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 {oldVersion && (
                   <div className={css.notice}>
                     <p>{t('olderWorkspace')}</p>
@@ -195,31 +179,47 @@ export function AssistantPanel({
                   </details>
                 </div>
               </details>
-              <div ref={dialogue} className={css.dialogue} aria-label={t('assistantReply')}>
-                {view.tasks.length === 0 && <p className={css.emptyDialogue}>{t(outline ? 'outlineEmptyDialogue' : 'noDialogue')}</p>}
+              <div className={css.conversationBar}>
+                <Button aria-expanded={conversationsOpen} onClick={() => { setConversationsOpen(value => !value) }}>
+                  {t('assistantConversations')}
+                </Button>
+                <Button disabled={disabled || !!studio.opening[key] || (query.busy && !running) || !!query.retry}
+                  onClick={() => { void studioActions.open(target, true); setConversationsOpen(false) }}>
+                  {t('assistantNewConversation')}
+                </Button>
+              </div>
+              {conversationsOpen && (
+                <nav className={css.conversationList} aria-label={t('assistantConversations')}>
+                  <strong>{t(roleKeys[roleId])} · {targetName}</strong>
+                  {view.versions.map(version => (
+                    <button key={version.id} type="button" aria-current={version.id === id ? 'true' : undefined}
+                      onClick={() => { void studioActions.selectVersion(target, version.id); setConversationsOpen(false) }}>
+                      <span>{version.title || t('assistantUntitledConversation')}</span>
+                      <small>{t('roleVersion', { revision: version.roleRevision })}{version.running ? ` · ${t('taskRunning')}` : ''}</small>
+                    </button>
+                  ))}
+                </nav>
+              )}
+              <div className={css.dialogue} data-conversation-scroll="" aria-label={t('assistantReply')}>
+                <div key={view.workspace.sessionId}>
+                  {renderSlot('chat-feed.view', {
+                    sessionId: view.workspace.sessionId,
+                    available: view.workspace.initialized,
+                    running: !!running,
+                    collapseUserContext: true,
+                    emptyText: t(outline ? 'outlineEmptyDialogue' : 'noDialogue'),
+                  })}
+                </div>
                 {view.tasks.map(task => (
                   <article className={css.dialogueTurn} key={task.id}>
-                    <div className={css.userBubble}>
-                      <strong>{t('userMessage')}</strong>
-                      <p>{task.prompt}</p>
-                    </div>
-                    <div className={css.assistantBubble}>
-                      <div className={css.row}>
-                        <strong>{t(roleKeys[task.role])}</strong>
-                        <span className={css.badge}>{t(taskLabels[task.status])}</span>
-                      </div>
-                      {task.reply && <p>{task.reply}</p>}
-                      {task.error && <p role="alert">{task.error}</p>}
-                      {task.status === 'running' && <Button onClick={() => void studioActions.cancel(task)}>{t('stopAssistant')}</Button>}
-                      {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'interrupted') && (
-                        <Button
-                          disabled={disabled || query.busy || !!running || oldVersion || !!query.retry}
-                          onClick={() => void studioActions.send(view.workspace.id, revision, input, task.prompt, selection ?? undefined)}
-                        >
-                          {t('taskRetry')}
-                        </Button>
-                      )}
-                    </div>
+                    {task.reply && <p>{task.reply}</p>}
+                    {task.error && <p role="alert">{task.error}</p>}
+                    {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'interrupted') && (
+                      <Button disabled={disabled || query.busy || !!running || oldVersion || !!query.retry}
+                        onClick={() => void studioActions.send(view.workspace.id, revision, input, task.prompt, selection ?? undefined)}>
+                        {t('taskRetry')}
+                      </Button>
+                    )}
                     {view.proposals
                       .filter(proposal => proposal.taskId === task.id)
                       .map((proposal) => {
@@ -338,7 +338,7 @@ export function AssistantPanel({
               <Button key={action}
                 disabled={!backend || disabled || !!running || !!query?.busy || !!query?.retry || oldVersion ||
                   !!prompt.trim() || (action !== 'outlineGenerate' && !input.outline.trim())}
-                onClick={() => { actions.assistantPrompt(key, t(`${action}Prompt`)) }}
+                onClick={() => { actions.assistantPrompt(draftKey, t(`${action}Prompt`)) }}
               >
                 {t(action)}
               </Button>
@@ -351,13 +351,13 @@ export function AssistantPanel({
           value: prompt,
           label: t('assistantMessage'),
           placeholder: t(outline ? 'outlinePlaceholder' : 'assistantPlaceholder'),
-          disabled: !backend || disabled,
+          disabled: !backend || disabled || !view,
           sendDisabled: !backend || !view || disabled || !!saveFirst || !prompt.trim() ||
             !!running || query.busy || !!query.retry || oldVersion,
           modelLocked: !backend || disabled || !!running || !!query?.busy || !!query?.retry || oldVersion,
           selection,
-          onChange: (value) => { actions.assistantPrompt(key, value) },
-          onSelect: (model) => { actions.assistantModel(key, model) },
+          onChange: (value) => { actions.assistantPrompt(draftKey, value) },
+          onSelect: (model) => { actions.assistantModel(draftKey, model) },
           onSend: send,
           ...(running ? { onStop: () => { void studioActions.cancel(running) } } : {}),
         })}

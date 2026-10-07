@@ -69,32 +69,32 @@ export function ProjectFields({ input, change, disabled, creation = false, locat
       </label>
       {location}
       {conceptField}
-      <fieldset className={css.ratios}>
-        <legend>{t('ratio')}</legend>
-        {(
-          [
-            ['16:9', 'landscape'],
-            ['9:16', 'portrait'],
-            ['1:1', 'square'],
-          ] as const
-        ).map(([value, label]) => (
-          <label key={value} className={css.choice}>
-            <input
-              type="radio"
-              name={`${fieldId}-ratio`}
-              value={value}
-              checked={input.aspectRatio === value}
-              onChange={() => {
-                change({ aspectRatio: value })
-              }}
-            />
-            <span aria-hidden="true" className={clsx(css.frame, label === 'portrait' && css.portrait, label === 'square' && css.square)} />
-            <span>{t(label)}</span>
-          </label>
-        ))}
-      </fieldset>
       {!creation && (
         <>
+          <fieldset className={css.ratios}>
+            <legend>{t('ratio')}</legend>
+            {(
+              [
+                ['16:9', 'landscape'],
+                ['9:16', 'portrait'],
+                ['1:1', 'square'],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className={css.choice}>
+                <input
+                  type="radio"
+                  name={`${fieldId}-ratio`}
+                  value={value}
+                  checked={input.aspectRatio === value}
+                  onChange={() => {
+                    change({ aspectRatio: value })
+                  }}
+                />
+                <span aria-hidden="true" className={clsx(css.frame, label === 'portrait' && css.portrait, label === 'square' && css.square)} />
+                <span>{t(label)}</span>
+              </label>
+            ))}
+          </fieldset>
           <div className={css.columns}>
             <label className={css.field}>
               {t('count')}

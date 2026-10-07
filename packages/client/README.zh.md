@@ -49,6 +49,8 @@ kind: "package-group"
 | [`ui-multica/`](ui-multica/README.zh.md) | 漫剧项目、草稿编辑与版本历史 | — |
 | [`ui-conversation/`](ui-conversation/README.zh.md) | 展示当前对话及其输入界面 | — |
 | [`ui-chat/`](ui-chat/README.zh.md) | 投影并渲染 Chat 对话 target | — |
+| [`ui-chat-feed/`](ui-chat-feed/README.zh.md) | 嵌入独立选择的 Session 对话记录 | — |
+| [`chat-feed-contract/`](chat-feed-contract/README.zh.md) | 定义应用拥有的 Feed 插槽类型 | — |
 | [`ui-approval/`](ui-approval/README.zh.md) | 展示批准请求并返回用户决策 | — |
 | [`ui-tool/`](ui-tool/README.zh.md) | 编排工具调用树与按工具键控的视图 | — |
 | [`ui-workflow-run/`](ui-workflow-run/README.zh.md) | 把持久工作流运行回放为嵌套对话折叠项 | — |

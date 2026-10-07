@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-[项目服务](../../../../packages/multica/studio-core/README.zh.md)持久化角色版本、目标绑定工作区、冻结任务输入、提案及人工审查。工作区在 Agent 执行前预留独立 Session ID。发布角色配置建立新工作区版本。请求 ID 使不确定传输重试具备幂等性；一个工作区只允许一个运行中任务。
+[项目服务](../../../../packages/multica/studio-core/README.zh.md)持久化角色版本、目标绑定工作区、冻结任务输入、提案及人工审查。工作区在 Agent 执行前预留独立 Session ID。发布角色配置建立新工作区版本。 对话选择与独立 Session 渲染遵循 [Chat Feed 决策](2026-09-30-independent-chat-feed.zh.md)。请求 ID 使不确定传输重试具备幂等性；一个工作区只允许一个运行中任务。
 
 [专业运行时](../../../../packages/multica/studio-agents/README.zh.md)将每项捕获任务记录为普通用户消息内容，并复用共享结构化输出捕获协议。持续 Agent 作用域守卫拒绝无关聊天和继承工具。安全 `multica` 预设不包含写能力。选定技能贡献文本；可信上下文工具只在捕获任务范围内读取。
 
